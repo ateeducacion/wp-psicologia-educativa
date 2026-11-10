@@ -1,0 +1,122 @@
+/* La piel de los aplicativos hermanos (eventos y
+   registro de visitas), con los mismos colores, cabecera, pestañas y pie. */
+
+.pse {
+	--pse-brand: #1b4f8a;
+	--pse-brand-cont: #e3ecf7;
+	--pse-line: #e4e7eb;
+	--pse-soft: #f7f8fa;
+	--pse-sup-2: #f4f6f9;
+	--pse-text: #1c2024;
+	--pse-text-2: #5a6672;
+	--pse-foot-bg: #05395c;
+	--pse-ok: #1f6b45;
+	--pse-ok-cont: #e4f0e8;
+	--pse-wait: #8a5a12;
+	--pse-wait-cont: #f9efe0;
+	--pse-bad: #a8342c;
+	--pse-bad-cont: #fae9e7;
+	--pse-e1: 0 1px 2px rgba(16, 24, 40, .05), 0 1px 3px rgba(16, 24, 40, .07);
+	--pse-e2: 0 2px 4px rgba(16, 24, 40, .05), 0 4px 12px rgba(16, 24, 40, .09);
+	--pse-r: 12px;
+	--pse-width: 1200px;
+	--bs-primary: #1b4f8a;
+	--bs-primary-rgb: 27, 79, 138;
+	--bs-link-color: #1b4f8a;
+	--bs-link-color-rgb: 27, 79, 138;
+	--bs-link-hover-color: #123a68;
+	background: var(--pse-soft);
+	color: var(--pse-text);
+	/* El pie, abajo del todo aunque haya poco contenido. */
+	min-height: 100vh;
+	display: flex;
+	flex-direction: column;
+}
+.pse main { flex: 1 0 auto; }
+.pse .container { max-width: var(--pse-width); }
+
+/* Cabecera: marca del despliegue (si la hay), nombre del aplicativo y la cuenta */
+.pse-top { background: #fff; border-bottom: 1px solid var(--pse-line); }
+.pse-top-in { display: flex; align-items: center; gap: 14px; min-height: 72px; flex-wrap: wrap; padding-top: 10px; padding-bottom: 10px; }
+.pse-brand { color: var(--pse-brand); font-weight: 700; font-size: 18px; letter-spacing: -.02em; text-decoration: none; }
+.pse-yo { margin-left: auto; position: relative; }
+.pse-yo > summary { list-style: none; display: flex; align-items: center; gap: 10px; cursor: pointer; border-radius: 12px; padding: 4px 6px; }
+.pse-yo > summary::-webkit-details-marker { display: none; }
+.pse-yo > summary:hover, .pse-yo[open] > summary { background: var(--pse-sup-2); }
+.pse-avatar { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: var(--pse-brand-cont); color: var(--pse-brand); font-size: 13px; font-weight: 700; }
+.pse-yo-txt { display: flex; flex-direction: column; line-height: 1.25; }
+.pse-yo-txt strong { font-size: 14px; font-weight: 600; }
+.pse-yo-txt small { font-size: 12.5px; color: var(--pse-text-2); }
+.pse-yo-menu { position: absolute; right: 0; top: calc(100% + 6px); min-width: 12rem; padding: 6px; background: #fff; border: 1px solid var(--pse-line); border-radius: 12px; box-shadow: var(--pse-e2); z-index: 1050; display: grid; }
+.pse-yo-menu a { padding: 10px 12px; border-radius: 8px; color: var(--pse-text); text-decoration: none; font-size: 14px; }
+.pse-yo-menu a:hover { background: var(--pse-sup-2); color: var(--pse-brand); }
+
+/* Pestañas */
+.pse-nav { background: #fff; border-bottom: 1px solid var(--pse-line); }
+.pse-nav .nav { flex-wrap: nowrap; overflow-x: auto; gap: 4px; }
+.pse-nav .nav-link { display: flex; align-items: center; min-height: 48px; padding: 0 16px; font-size: 14.5px; color: var(--pse-text-2); border-bottom: 3px solid transparent; white-space: nowrap; }
+.pse-nav .nav-link:hover { color: var(--pse-brand); }
+.pse-nav .nav-link.active { color: var(--pse-brand); font-weight: 700; border-bottom-color: var(--pse-brand); }
+
+/* Título de la pantalla */
+.pse-head { padding: 28px 0 4px; }
+/* Sin título a la vista —lo dice la pestaña activa— la banda solo lleva los
+   botones de la pantalla, y no necesita tanto aire. */
+.pse-head.is-bare { padding: 14px 0 0; }
+.pse-h1 { font-size: 27px; font-weight: 700; letter-spacing: -.02em; margin: 0 0 4px; }
+
+/* Pie: solo lo que pone quien despliega */
+.pse-foot { background: var(--pse-foot-bg); color: #fff; font-size: 13px; padding: 18px 0; }
+.pse-foot .container { display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: baseline; }
+.pse-foot a { color: #fff; text-decoration: underline; }
+.pse-foot a:hover { color: #fff; text-decoration: none; }
+.pse-foot-credit { color: rgba(255, 255, 255, 0.72); }
+.pse-foot-legal { margin-left: auto; display: flex; flex-wrap: wrap; gap: 8px 18px; }
+
+/* Tarjetas, avisos y botones */
+.pse-card { background: #fff; border: 1px solid var(--pse-line); border-radius: var(--pse-r); padding: 22px; margin-bottom: 18px; }
+.pse-card h2 { font-size: 15px; font-weight: 700; margin: 0 0 14px; }
+.pse-card h2 label { margin: 0; }
+.pse .form-label { font-weight: 600; font-size: 14.5px; }
+.pse-warn { border-radius: var(--pse-r); }
+.pse-btn { border-radius: 999px; padding: .6rem 1.5rem; font-weight: 700; }
+.pse-note { margin: 16px 0 0; color: var(--pse-text-2); font-size: 13.5px; }
+.pse-empty { margin: 0; padding: 24px; background: #fff; border-radius: var(--pse-r); color: var(--pse-text-2); }
+
+/* Filtros y estados */
+.pse-filters { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+.pse-filters .form-control { flex: 2 1 16rem; }
+.pse-filters .form-select { flex: 1 1 11rem; width: auto; }
+.pse-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+.pse-chip { padding: 6px 14px; border-radius: 999px; border: 1px solid var(--pse-line); background: #fff; color: var(--pse-text); font-size: 14px; text-decoration: none; }
+.pse-chip b { margin-left: 4px; padding: 1px 7px; border-radius: 999px; background: var(--pse-sup-2); font-size: 12px; }
+.pse-chip.is-on { background: var(--pse-brand); border-color: var(--pse-brand); color: #fff; font-weight: 700; }
+.pse-chip.is-on b { background: rgba(255, 255, 255, .25); }
+.pse-state { display: inline-block; padding: .25em .7em; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.pse-state-pending { background: var(--pse-wait-cont); color: var(--pse-wait); }
+.pse-state-in_progress { background: var(--pse-brand-cont); color: var(--pse-brand); }
+.pse-state-attended { background: var(--pse-ok-cont); color: var(--pse-ok); }
+
+/* Listados */
+.pse-table { background: #fff; font-size: 14px; margin: 0; }
+.pse-table th { font-size: 12.5px; color: var(--pse-text-2); font-weight: 600; white-space: nowrap; }
+.pse-table td, .pse-table th { padding: 12px 10px; vertical-align: middle; }
+.pse-status-form { display: flex; gap: 6px; align-items: center; }
+.pse-status-form .form-select { width: auto; }
+.pse-list-foot { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 18px; }
+.pse-pages { display: flex; gap: 8px; align-items: center; color: var(--pse-text-2); font-size: 14px; }
+
+/* Estadísticas */
+.pse-figures { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; margin-bottom: 18px; }
+.pse-figure { background: #fff; border-radius: var(--pse-r); box-shadow: var(--pse-e1); padding: 16px 18px; }
+.pse-figure b { display: block; font-size: 32px; line-height: 1.1; letter-spacing: -.03em; }
+.pse-figure span { font-size: 12.5px; color: var(--pse-text-2); }
+.pse-bars { display: grid; grid-template-columns: minmax(8rem, 16rem) 1fr; gap: 8px 12px; margin: 0; font-size: 13.5px; align-items: center; }
+.pse-bars dt { font-weight: 400; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pse-bars dd { display: flex; align-items: center; gap: 8px; margin: 0; }
+.pse-bars dd span { display: block; height: 16px; min-width: 2px; background: var(--pse-brand); border-radius: 3px; }
+.pse-bars dd b { font-weight: 400; font-variant-numeric: tabular-nums; }
+
+/* Los botones, del color del aplicativo y no del azul de Bootstrap */
+.pse .btn-primary { --bs-btn-bg: var(--pse-brand); --bs-btn-border-color: var(--pse-brand); --bs-btn-hover-bg: #123a68; --bs-btn-hover-border-color: #123a68; --bs-btn-active-bg: #123a68; --bs-btn-active-border-color: #123a68; }
+.pse .btn-outline-primary { --bs-btn-color: var(--pse-brand); --bs-btn-border-color: var(--pse-brand); --bs-btn-hover-bg: var(--pse-brand); --bs-btn-hover-border-color: var(--pse-brand); --bs-btn-active-bg: var(--pse-brand); --bs-btn-active-border-color: var(--pse-brand); }

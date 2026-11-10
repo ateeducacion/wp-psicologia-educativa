@@ -1,0 +1,56 @@
+# Dependencies
+node_modules/
+/vendor/
+
+# Material privado de quien despliega: el encargo, la maqueta y las reglas de
+# check-public que nombran a una organización. No se versiona nada.
+/.local/
+
+# Optional local wp-env overrides
+.wp-env.override.json
+
+# Configuración local de despliegue (plantilla versionada: .env.dist)
+.env
+
+# Build artifacts and caches
+artifacts/
+.phpunit.result.cache
+coverage.xml
+wp/
+
+# Logs and temporary files
+*.log
+*.tmp
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor/IDE files
+/.idea/
+.vscode/
+
+# Local agent state. Las skills de .claude/skills/ SÍ se versionan, y como
+# **copia**: en Windows los enlaces simbólicos no funcionan salvo que estén
+# habilitados a mano, y `gh skill` tampoco enlaza, copia. Así el árbol es el
+# mismo en macOS, Linux y Windows.
+.omc/
+.playwright-mcp/
+.claude/*
+!.claude/skills/
+security-scans/
+
+# Capturas de pantalla generadas a mano (se regeneran, no se versionan)
+/capturas/
+
+# Lienzo de diseño (.design/): el HTML sembrado es el editor del lienzo
+# empaquetado —2,5 MB— y se regenera desde las fuentes. Las fuentes SÍ se
+# versionan: los *.dc.html, canvas.json, _base.css y _build.py.
+# Cómo se regenera: .design/README.md
+/.design/*.html
+!/.design/*.dc.html
+.pse-plugin-check/
+
+# Capturas: se generan con `make capturas` y se publican en el PR, no aquí.
+/capturas/

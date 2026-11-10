@@ -1,0 +1,73 @@
+<?xml version="1.0"?>
+<ruleset name="WordPress Coding Standards for Psicología educativa">
+	<description>WordPress Coding Standards for the development repository.</description>
+
+	<file>snippets</file>
+	<file>scripts</file>
+	<file>src</file>
+	<file>tests</file>
+	<!-- Las herramientas de construcción también son código de este repositorio:
+	     el empaquetador decide qué llega a producción y el envoltorio de
+	     Plugin Check escribe una cabecera de plugin. Que estuvieran fuera del
+	     estándar era un hueco, no una decisión. -->
+	<file>build</file>
+	<!-- Generated Code Snippets bundle (edit sources under src/Pse). -->
+	<exclude-pattern>/snippets/.*\.bundle\.php$</exclude-pattern>
+
+	<exclude-pattern>/vendor/*</exclude-pattern>
+	<exclude-pattern>/node_modules/*</exclude-pattern>
+	<exclude-pattern>/wp/*</exclude-pattern>
+
+	<arg name="extensions" value="php"/>
+	<arg name="colors"/>
+	<arg value="sp"/>
+
+	<rule ref="WordPress">
+		<!-- Snippets, eval-file scripts and tests do not follow the class-file naming scheme. -->
+		<exclude name="WordPress.Files.FileName"/>
+		<!-- eval-file scripts run in global scope and assign local working variables. -->
+		<exclude name="WordPress.WP.GlobalVariablesOverride"/>
+	</rule>
+
+	<!--
+	Las herramientas de `build/` corren desde la línea de órdenes, **fuera de
+	WordPress**: las lanza `php build/…` y no hay ni `wp-load.php` ni
+	`WP_Filesystem` que valga. Pedirles la API de ficheros de WordPress sería
+	pedirles que usen algo que no existe donde corren, así que esas reglas se
+	apagan solo ahí. Todo lo demás del estándar —espaciado, nombres, docblocks,
+	condiciones de Yoda, escapado— les sigue aplicando.
+	-->
+	<rule ref="WordPress.WP.AlternativeFunctions">
+		<exclude-pattern>/build/*</exclude-pattern>
+	</rule>
+	<!--
+	`var_export()` en el empaquetador no es código de depuración: es cómo se
+	serializa el mapa de ficheros inlineados para escribirlo dentro del bundle.
+	-->
+	<rule ref="WordPress.PHP.DevelopmentFunctions.error_log_var_export">
+		<exclude-pattern>/build/*</exclude-pattern>
+	</rule>
+
+	<!--
+	Product capabilities: the two application-wide ones registered in
+	snippets/roles-and-profiles.php, plus the full set WordPress derives for
+	each custom post type from `capability_type` + `map_meta_cap => true`,
+	and `switch_users` (WPFront User Role Editor, used by the dev tools).
+	-->
+	<rule ref="WordPress.WP.Capabilities">
+		<properties>
+			<property name="custom_capabilities" type="array">
+				<element value="pse_manage_app"/>
+				<element value="pse_request_intervention"/>
+				<element value="pse_attend_requests"/>
+				<element value="pse_oversee_requests"/>
+				<element value="pse_manage_zones"/>
+				<element value="switch_users"/>
+			</property>
+		</properties>
+	</rule>
+
+	<!-- PHP compatibility: the code must run on PHP 8.1 or newer. -->
+	<config name="testVersion" value="8.1-"/>
+	<rule ref="PHPCompatibilityWP"/>
+</ruleset>

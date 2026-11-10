@@ -1,0 +1,287 @@
+---
+name: CI
+
+on:
+  # En los PR corre siempre, también cuando solo cambia documentación: `lint`
+  # y `test` son comprobaciones obligatorias de la regla que protege `main`
+  # (ADR-0002), y un check que el workflow se salta no se da por pasado: GitHub
+  # se queda esperándolo y el PR no se puede mezclar. El job `changes` permite
+  # omitir los jobs, sin omitir el workflow, cuando solo cambian skills.
+  pull_request:
+  push:
+    branches:
+      - 'main'
+    paths-ignore:
+      - '.agents/skills/**'
+      - '.claude/skills/**'
+      - '**.md'
+      - 'docs/**'
+      - '.github/*.md'
+
+# Un empujón nuevo a la misma rama deja sin objeto al anterior: se cancela en
+# vez de ocupar el runner para nada. Por PR cuando lo hay: `github.ref` en un
+# `pull_request` es `refs/pull/N/merge`, que ya es único por PR, pero decirlo
+# por número deja el grupo legible en la interfaz y no depende de esa forma.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  COMPOSER_NO_INTERACTION: 1
+  COMPOSER_PROCESS_TIMEOUT: 0
+  COMPOSER_NO_AUDIT: 1
+
+jobs:
+  changes:
+    runs-on: ${{ vars.PSE_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 5
+    permissions:
+      pull-requests: read
+    outputs:
+      code: ${{ steps.files.outputs.code }}
+    steps:
+      - name: Detectar cambios fuera de las skills
+        id: files
+        uses: actions/github-script@v9
+        with:
+          script: |
+            let runCode = true;
+            if (context.eventName === 'pull_request') {
+              const request = { ...context.repo, pull_number: context.payload.pull_request.number };
+              const { data: before } = await github.rest.pulls.get(request);
+              const files = await github.paginate(github.rest.pulls.listFiles, { ...request, per_page: 100 });
+              const { data: after } = await github.rest.pulls.get(request);
+              // Una lista incompleta o un PR que cambió durante la consulta no permite omitir CI.
+              const complete = files.length > 0 && files.length === before.changed_files
+                && before.head.sha === context.payload.pull_request.head.sha
+                && after.head.sha === before.head.sha && after.changed_files === before.changed_files;
+              if (complete) {
+                const isSkill = (path) => path.startsWith('.agents/skills/') || path.startsWith('.claude/skills/');
+                runCode = files.some((file) => !isSkill(file.filename)
+                  || (file.previous_filename && !isSkill(file.previous_filename)));
+              }
+            }
+            core.setOutput('code', String(runCode));
+
+  lint:
+    needs: changes
+    # Ante un fallo del detector, se ejecuta el código en vez de omitir comprobaciones.
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
+    # Dónde corre lo decide la variable PSE_RUNNER del repositorio: si vale
+    # `self-hosted`, los jobs van a un runner propio (la facturación de la
+    # organización puede estar bloqueada y entonces GitHub no arranca los
+    # alojados). Sin esa variable se usan los de GitHub; no hay que tocar
+    # ningún workflow para cambiar de sitio.
+    runs-on: ${{ vars.PSE_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      # En los runners de GitHub la imagen no trae lo que hace falta y lo pone
+      # esta acción. En uno propio, PHP ya está y la acción falla al instalar
+      # Composer («Could not setup composer»): allí basta con comprobar que
+      # están, y traer Composer al espacio de trabajo si faltara.
+      - name: Preparar PHP (runners de GitHub)
+        if: runner.environment == 'github-hosted'
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: composer:v2
+          coverage: none
+
+      - name: Comprobar PHP y Composer (runner propio)
+        if: runner.environment != 'github-hosted'
+        run: |
+          set -euo pipefail
+          php -v | head -1
+          if command -v composer > /dev/null; then
+            composer --version
+            exit 0
+          fi
+          # Sin sudo y sin tocar el sistema: se instala en el temporal del
+          # runner y se añade al PATH de los pasos siguientes.
+          mkdir -p "${RUNNER_TEMP}/bin"
+          php -r "copy('https://getcomposer.org/installer', '${RUNNER_TEMP}/composer-setup.php');"
+          php "${RUNNER_TEMP}/composer-setup.php" --install-dir="${RUNNER_TEMP}/bin" --filename=composer --quiet
+          echo "${RUNNER_TEMP}/bin" >> "${GITHUB_PATH}"
+          "${RUNNER_TEMP}/bin/composer" --version
+
+      - name: Get Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "${GITHUB_OUTPUT}"
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v6
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist
+
+      - name: Validate composer.json
+        run: composer validate --no-check-publish
+
+      - name: Run code linting (PHPCS)
+        run: composer lint
+
+      - name: Comprobar errores de provisión
+        run: make check-provision
+
+      - name: Comprobar que las dos copias de las skills coinciden
+        run: make check-skills
+
+      - name: Check PHP syntax
+        run: find . -path ./vendor -prune -o -name '*.php' -print0 | xargs -0 -n1 php -l > /dev/null
+
+      # Se valida todo el JSON versionado en vez de una lista escrita a mano:
+      # así ni se olvida un fichero nuevo ni revienta el paso cuando se borra
+      # uno de los antiguos.
+      - name: Validate JSON files
+        run: |
+          set -euo pipefail
+          git ls-files -z '*.json' | while IFS= read -r -d '' f; do
+            echo "Validando ${f}"
+            jq empty "${f}"
+          done
+
+  test:
+    needs: changes
+    # Ante un fallo del detector, se ejecuta el código en vez de omitir comprobaciones.
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
+    # Ver el comentario de PSE_RUNNER en el job `lint`.
+    runs-on: ${{ vars.PSE_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 20
+    # El secreto se copia aquí porque el contexto `secrets` no se puede leer
+    # desde un `if`, y `env` sí. Vacío cuando no llega —un fork, un PR de
+    # Dependabot—, que es justo lo que la condición del paso comprueba.
+    env:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+
+      # En los runners de GitHub la imagen no trae lo que hace falta y lo pone
+      # esta acción. En uno propio, PHP ya está y la acción falla al instalar
+      # Composer («Could not setup composer»): allí basta con comprobar que
+      # están, y traer Composer al espacio de trabajo si faltara.
+      - name: Preparar PHP (runners de GitHub)
+        if: runner.environment == 'github-hosted'
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: composer:v2
+          coverage: none
+
+      - name: Comprobar PHP y Composer (runner propio)
+        if: runner.environment != 'github-hosted'
+        run: |
+          set -euo pipefail
+          php -v | head -1
+          if command -v composer > /dev/null; then
+            composer --version
+            exit 0
+          fi
+          # Sin sudo y sin tocar el sistema: se instala en el temporal del
+          # runner y se añade al PATH de los pasos siguientes.
+          mkdir -p "${RUNNER_TEMP}/bin"
+          php -r "copy('https://getcomposer.org/installer', '${RUNNER_TEMP}/composer-setup.php');"
+          php "${RUNNER_TEMP}/composer-setup.php" --install-dir="${RUNNER_TEMP}/bin" --filename=composer --quiet
+          echo "${RUNNER_TEMP}/bin" >> "${GITHUB_PATH}"
+          "${RUNNER_TEMP}/bin/composer" --version
+
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist
+
+      - name: Install npm dependencies
+        run: npm install
+
+      # Los guiones de assets/js, antes de arrancar wp-env: un fallo aquí se ve
+      # en segundos, no después del arranque de los contenedores y de PHPUnit.
+      - name: Run JavaScript unit tests
+        run: npm run test:js
+
+      # El informe de los guiones también se guarda como artefacto, para leerlo
+      # sin volver a correr la suite; a Codecov sube al final, junto al de PHP.
+      # Sin guiones en assets/js no hay informe que guardar ni que subir: los
+      # dos pasos se encienden solos con el primero.
+      - name: Upload JavaScript coverage report
+        if: ${{ !cancelled() && hashFiles('assets/js/*.js') != '' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-js
+          path: artifacts/coverage-js/
+          retention-days: 30
+
+      - name: Start wp-env
+        run: npx wp-env start --update
+
+      - name: Provision environment
+        run: make provision
+
+      # Plugin Check sobre un envoltorio desechable: este repositorio no es un
+      # plugin (ADR-0001), pero el código que corre dentro de WordPress es el
+      # mismo y las comprobaciones valen igual.
+      - name: Run WordPress Plugin Check
+        run: make check-plugin
+
+      - name: Run unit tests with coverage
+        run: make coverage
+
+      - name: Upload coverage reports to Codecov
+        # Se salta cuando no hay token, que es la condición de verdad. Un PR
+        # desde un fork no lo recibe, pero tampoco lo recibe un PR de
+        # Dependabot —que no es un fork, sino una rama de este repositorio, con
+        # su propio almacén de secretos—. Con fail_ci_if_error el paso tumbaría
+        # el PR por no tener token, no por la cobertura.
+        #
+        # Se mira `env` y no `secrets`: el contexto `secrets` **no está
+        # disponible en un `if`** —GitHub rechaza el fichero entero, no el
+        # paso—, así que el secreto se copia a una variable de entorno del job
+        # y la condición lee esa.
+        if: ${{ !github.event.pull_request.head.repo.fork && env.CODECOV_TOKEN != '' }}
+        uses: codecov/codecov-action@v7
+        with:
+          token: ${{ env.CODECOV_TOKEN }}
+          slug: ateeducacion/wp-psicologia-educativa
+          files: ./coverage.xml
+          flags: php
+          # Solo este fichero: sin esto la acción rebusca por el repositorio y
+          # se llevaría también el informe de los guiones, que va aparte.
+          disable_search: true
+          # Si la subida falla, que se vea: sin esto el primer intento pasa en
+          # verde con el token vacío y sin informe.
+          fail_ci_if_error: true
+
+      # La cobertura de los guiones de assets/js, con su propio flag: Codecov
+      # suma las dos subidas del commit, así que el total del proyecto y el del
+      # parche cuentan PHP y JavaScript juntos, y el comentario los separa.
+      - name: Upload JavaScript coverage to Codecov
+        if: ${{ !github.event.pull_request.head.repo.fork && env.CODECOV_TOKEN != '' && hashFiles('assets/js/*.js') != '' }}
+        uses: codecov/codecov-action@v7
+        with:
+          token: ${{ env.CODECOV_TOKEN }}
+          slug: ateeducacion/wp-psicologia-educativa
+          files: ./artifacts/coverage-js/lcov.info
+          flags: js
+          disable_search: true
+          fail_ci_if_error: true
+
+      # En un runner de GitHub la máquina se tira al acabar y da igual; en uno
+      # propio, no: los contenedores de wp-env se quedarían corriendo entre
+      # ejecuciones, ocupando los puertos 8958 y 8959 y arrastrando la base de
+      # datos de la anterior. `stop` los para y conserva los volúmenes, que
+      # `start --update` reaprovecha; `destroy` obligaría a rehacer la descarga
+      # en cada ejecución. Con `always()` también se limpia cuando el job falla,
+      # que es justo cuando más falta hace.
+      - name: Parar wp-env
+        if: always()
+        run: npx wp-env stop || true

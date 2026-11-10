@@ -1,0 +1,48 @@
+# Codecov: el porcentaje y su variación, en un comentario de cada PR.
+#
+# **El suelo es el 90 %, en los dos ejes**: el del proyecto y el del parche,
+# y los dos tumban el PR, no avisan. Es el mismo listón que el aplicativo de
+# eventos, del que este hereda la plataforma (ADR-0002, que hereda su política
+# de pruebas). Los tests que lo sostienen prueban comportamiento —qué ve y qué
+# puede guardar cada perfil, qué filtra cada filtro—, no líneas sueltas: un
+# test que solo pasa por el código para subir el número no protege nada.
+#
+# Lo que eso significa en un PR: lo que se toca va con sus tests (el parche), y
+# no se puede compensar tocando poco (el proyecto). Un PR que baje el total
+# tumba, no avisa.
+#
+# Llegan dos informes por commit, cada uno con su flag: `php` (PHPUnit, sobre
+# src/Pse) y `js` (Vitest, sobre los guiones de assets/js). Codecov los suma,
+# así que los dos suelos cuentan PHP y JavaScript juntos.
+# Recetas de docs.codecov.com/docs/common-recipe-list.
+comment:
+  # `header` pinta el total del proyecto y su variación frente a la base; sin él
+  # el comentario solo trae el parche. `flags` separa PHP y JavaScript.
+  layout: "header, diff, flags, files, footer"
+  behavior: default
+  require_changes: false
+  require_base: false
+  require_head: true
+  hide_project_coverage: false
+
+# `App::boot()` corre en el arranque, antes de que PHPUnit empiece a medir, y
+# es idempotente: ningún test puede volver a ejecutar su cuerpo. Medirlo solo
+# añade ruido. Lo que hace sí está probado, en `test-load-order.php`:
+# que el arranque dejó enganchado lo que sostiene el aplicativo.
+ignore:
+  - "src/Pse/App.php"
+
+coverage:
+  status:
+    project:
+      default:
+        target: 90%
+        # Un punto de holgura: sin esto, una línea de más en un fichero que ya
+        # estaba cubierto puede mover el total lo justo para tumbar un PR que no
+        # ha empeorado nada.
+        threshold: 1%
+        informational: false
+    patch:
+      default:
+        target: 90%
+        informational: false

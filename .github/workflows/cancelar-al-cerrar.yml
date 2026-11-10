@@ -1,0 +1,46 @@
+---
+name: Cancelar al cerrar
+
+# GitHub no cancela nada cuando un pull request se fusiona o se cierra: sus
+# ejecuciones en curso o en cola siguen ocupando runner para dar un veredicto
+# sobre algo que ya se decidió. `concurrency` no llega aquí —solo cancela entre
+# ejecuciones del mismo grupo, y cerrar un PR no lanza ninguna—, así que hace
+# falta pedirlo.
+on:
+  pull_request:
+    types: [closed]
+
+# Cancelar es lo único que hace: ni lee el código ni escribe en él.
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: cancelar-al-cerrar-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  cancelar:
+    runs-on: ${{ vars.PSE_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 5
+    steps:
+      - name: Cancelar lo que quedara en marcha de este PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          RAMA: ${{ github.event.pull_request.head.ref }}
+          YO: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          # Por rama de origen, que es lo que comparten todas las ejecuciones
+          # del PR. La propia se excluye: cancelarse a sí misma dejaría el
+          # trabajo a medias y marcaría el PR en rojo sin motivo.
+          for estado in queued in_progress; do
+            gh run list --repo "$REPO" --branch "$RAMA" --status "$estado" \
+              --limit 100 --json databaseId --jq '.[].databaseId' \
+            | while read -r id; do
+                [ "$id" = "$YO" ] && continue
+                echo "Cancelando $id ($estado)"
+                gh run cancel --repo "$REPO" "$id" || true
+              done
+          done

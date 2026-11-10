@@ -1,0 +1,33 @@
+{
+    "name": "ateeducacion/wp-psicologia-educativa",
+    "description": "Entorno de desarrollo del aplicativo de solicitudes de intervención de psicología educativa (WordPress + Code Snippets).",
+    "type": "project",
+    "license": "GPL-3.0-or-later",
+    "require": {
+        "php": ">=8.1"
+    },
+    "require-dev": {
+        "dealerdirect/phpcodesniffer-composer-installer": "*",
+        "phpcompatibility/phpcompatibility-wp": "*",
+        "phpmd/phpmd": "*",
+        "phpunit/phpunit": "^9",
+        "squizlabs/php_codesniffer": "*",
+        "wp-coding-standards/wpcs": "^3",
+        "wp-phpunit/wp-phpunit": "*",
+        "yoast/phpunit-polyfills": "*",
+        "yoast/wp-test-utils": "*"
+    },
+    "scripts": {
+        "lint": "phpcs",
+        "fix": "phpcbf",
+        "test": "phpunit"
+    },
+    "config": {
+        "platform": {
+            "php": "8.1.0"
+        },
+        "allow-plugins": {
+            "dealerdirect/phpcodesniffer-composer-installer": true
+        }
+    }
+}

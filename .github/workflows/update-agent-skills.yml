@@ -1,0 +1,52 @@
+---
+name: Update Agent Skills
+
+on:
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+
+# Una sola a la vez: dos en paralelo abrirían dos pull requests iguales. No se
+# cancela la que esté corriendo —está a medio abrir su PR—, se espera.
+concurrency:
+  group: update-agent-skills
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    # Dónde corre lo decide la variable PSE_RUNNER del repositorio: si vale
+    # `self-hosted`, el job va a un runner propio. Sin esa variable se usan los
+    # de GitHub; no hay que tocar ningún workflow para cambiar de sitio.
+    runs-on: ${{ vars.PSE_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+
+      - id: update
+        uses: erseco/update-agent-skills@v1
+        with:
+          dir: .agents/skills
+
+      # La acción solo toca las canónicas; sin esto .claude/skills/ se queda
+      # atrás y `make check` falla en cuanto alguien lo ejecuta.
+      - name: Sincronizar la copia de .claude/skills
+        if: steps.update.outputs.changed == 'true'
+        run: make skills-sync
+
+      - name: Open pull request
+        if: steps.update.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v8
+        with:
+          commit-message: 'chore(deps): update agent skills'
+          title: 'chore(deps): update agent skills'
+          body: |
+            ```text
+            ${{ steps.update.outputs.updated-skills }}
+            ```
+          branch: deps/agent-skills-update

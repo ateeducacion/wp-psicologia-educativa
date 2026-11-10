@@ -1,0 +1,33 @@
+# Exclude hidden files and directories
+.*                        export-ignore
+
+# Exclude development files so `git archive` keeps only the
+# deployable sources (snippets/)
+AGENTS.md                 export-ignore
+CHANGELOG.md              export-ignore
+CLAUDE.md                 export-ignore
+LICENSE                   export-ignore
+Makefile                  export-ignore
+README.md                 export-ignore
+assets/                   export-ignore
+blueprint-local.json      export-ignore
+blueprint.json            export-ignore
+build/                    export-ignore
+capturas/                 export-ignore
+codecov.yml               export-ignore
+composer.json             export-ignore
+composer.lock             export-ignore
+data/                     export-ignore
+docs/                     export-ignore
+node_modules/             export-ignore
+package-lock.json         export-ignore
+package.json              export-ignore
+phpmd.xml                 export-ignore
+phpmd.baseline.xml        export-ignore
+phpunit.xml.dist          export-ignore
+renovate.json             export-ignore
+scripts/                  export-ignore
+src/                      export-ignore
+tests/                    export-ignore
+vendor/                   export-ignore
+vitest.config.mjs         export-ignore

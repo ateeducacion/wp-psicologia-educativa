@@ -1,0 +1,102 @@
+{
+  "$schema": "https://playground.wordpress.net/blueprint-schema.json",
+  "landingPage": "/",
+  "preferredVersions": {
+    "php": "8.3",
+    "wp": "latest"
+  },
+  "features": {
+    "networking": true
+  },
+  "login": true,
+  "siteOptions": {
+    "blogname": "Solicitudes de intervención"
+  },
+  "steps": [
+    {
+      "step": "setSiteLanguage",
+      "language": "es_ES"
+    },
+    {
+      "step": "installPlugin",
+      "pluginData": {
+        "resource": "wordpress.org/plugins",
+        "slug": "code-snippets"
+      },
+      "options": {
+        "activate": true
+      }
+    },
+    {
+      "step": "installPlugin",
+      "pluginData": {
+        "resource": "wordpress.org/plugins",
+        "slug": "wpfront-user-role-editor"
+      },
+      "options": {
+        "activate": true
+      }
+    },
+    {
+      "step": "writeFiles",
+      "writeToPath": "/wordpress/wp-content/pse-dev/snippets",
+      "filesTree": {
+        "resource": "git:directory",
+        "url": "https://github.com/ateeducacion/wp-psicologia-educativa.git",
+        "ref": "main",
+        "path": "snippets",
+        "refType": "branch"
+      }
+    },
+    {
+      "step": "writeFiles",
+      "writeToPath": "/wordpress/wp-content/pse-dev/scripts",
+      "filesTree": {
+        "resource": "git:directory",
+        "url": "https://github.com/ateeducacion/wp-psicologia-educativa.git",
+        "ref": "main",
+        "path": "scripts",
+        "refType": "branch"
+      }
+    },
+    {
+      "step": "writeFiles",
+      "writeToPath": "/wordpress/wp-content/pse-dev/src",
+      "filesTree": {
+        "resource": "git:directory",
+        "url": "https://github.com/ateeducacion/wp-psicologia-educativa.git",
+        "ref": "main",
+        "path": "src",
+        "refType": "branch"
+      }
+    },
+    {
+      "step": "writeFiles",
+      "writeToPath": "/wordpress/wp-content/mu-plugins",
+      "filesTree": {
+        "resource": "git:directory",
+        "url": "https://github.com/ateeducacion/wp-psicologia-educativa.git",
+        "ref": "main",
+        "refType": "branch",
+        "path": "scripts/mu-plugins"
+      }
+    },
+    {
+      "step": "runPHP",
+      "code": "<?php require_once '/wordpress/wp-load.php'; require '/wordpress/wp-content/pse-dev/scripts/sync-snippets.php';"
+    },
+    {
+      "step": "runPHP",
+      "code": "<?php require_once '/wordpress/wp-load.php'; require '/wordpress/wp-content/pse-dev/scripts/provision-roles.php';"
+    },
+    {
+      "step": "runPHP",
+      "code": "<?php require_once '/wordpress/wp-load.php'; require '/wordpress/wp-content/pse-dev/scripts/seed-demo.php';"
+    }
+  ],
+  "meta": {
+    "title": "Solicitudes de intervención de psicología educativa",
+    "author": "ateeducacion",
+    "description": "Prueba el aplicativo con datos inventados: una dirección de centro solicita, psicología atiende las de su zona y la coordinación las sigue."
+  }
+}

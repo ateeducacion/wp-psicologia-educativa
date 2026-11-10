@@ -1,0 +1,110 @@
+# This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation.
+# PHPMD is a spin-off project of PHP Depend and
+# aims to be a PHP equivalent of the well known Java tool PMD.
+# What PHPMD does is: It takes a given PHP source code base
+# and look for several potential problems within that source.
+# These problems can be things like:
+#   Possible bugs
+#   Suboptimal code
+#   Overcomplicated expressions
+#   Unused parameters, methods, properties
+# More details at https://phpmd.org/
+
+name: PHPMD
+
+on:
+  push:
+    paths-ignore:
+      - '.agents/skills/**'
+      - '.claude/skills/**'
+    branches: [ "main" ]
+  pull_request:
+    paths-ignore:
+      - '.agents/skills/**'
+      - '.claude/skills/**'
+    # The branches below must be a subset of the branches above
+    branches: [ "main" ]
+  schedule:
+    - cron: '35 8 * * 5'
+
+# Un empujón nuevo a la misma rama deja sin objeto al anterior: se cancela en
+# vez de ocupar el runner para nada. El grupo va por PR cuando lo hay —así una
+# rama y su PR no se pisan— y por rama en los demás casos; el cron lleva el
+# suyo, que si no una ejecución semanal cancelaría la del PR que coincidiera.
+concurrency:
+  group: phpmd-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  PHPMD:
+    name: Run PHPMD scanning
+    # Dónde corre lo decide la variable PSE_RUNNER del repositorio: si vale
+    # `self-hosted`, el job va a un runner propio. Sin esa variable se usan los
+    # de GitHub; no hay que tocar ningún workflow para cambiar de sitio.
+    runs-on: ${{ vars.PSE_RUNNER || 'ubuntu-latest' }}
+    permissions:
+      contents: read # for checkout to fetch code
+      security-events: write # for github/codeql-action/upload-sarif to upload SARIF results
+      actions: read # only required for a private repository by github/codeql-action/upload-sarif to get the Action run status
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      # `tools: phpmd` traería una versión distinta de la que fija
+      # composer.lock (y fallaba en el runner propio): se usa la del
+      # repositorio, la misma que ejecuta `make phpmd`.
+      - name: Preparar PHP (runners de GitHub)
+        if: runner.environment == 'github-hosted'
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+          tools: composer:v2
+
+      - name: Comprobar PHP y Composer (runner propio)
+        if: runner.environment != 'github-hosted'
+        run: |
+          set -euo pipefail
+          php -v | head -1
+          if command -v composer > /dev/null; then
+            composer --version
+            exit 0
+          fi
+          mkdir -p "${RUNNER_TEMP}/bin"
+          php -r "copy('https://getcomposer.org/installer', '${RUNNER_TEMP}/composer-setup.php');"
+          php "${RUNNER_TEMP}/composer-setup.php" --install-dir="${RUNNER_TEMP}/bin" --filename=composer --quiet
+          echo "${RUNNER_TEMP}/bin" >> "${GITHUB_PATH}"
+          "${RUNNER_TEMP}/bin/composer" --version
+
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist --no-progress
+
+      # Se llama al target del Makefile, no a `./vendor/bin/phpmd` a mano: así
+      # CI y la ejecución local analizan exactamente lo mismo, con las mismas
+      # exclusiones y el mismo error_reporting. Aquí solo cambian el formato de
+      # salida y el fichero de informe, que es lo único propio de CI.
+      - name: Run PHPMD
+        run: make phpmd PHPMD_FORMAT=sarif PHPMD_EXTRA="--reportfile-sarif phpmd-results.sarif --ignore-violations-on-exit"
+        continue-on-error: true
+
+      # Code scanning requires GitHub Advanced Security on private repos, so
+      # the upload must not fail the workflow while this repository is private.
+      - name: Upload analysis results to GitHub
+        uses: github/codeql-action/upload-sarif@v4
+        continue-on-error: true
+        with:
+          sarif_file: phpmd-results.sarif
+          wait-for-processing: true
+
+      - name: Upload SARIF report as artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: phpmd-results
+          path: phpmd-results.sarif

@@ -1,0 +1,63 @@
+# Pega en cada PR un enlace que abre ese PR en WordPress Playground.
+#
+# El blueprint que se usa es el de la raíz (`blueprint.json`), con la rama
+# cambiada por la del PR: así lo que se prueba es **el código del PR** y no el
+# de `main`. La sustitución se hace aquí y no en la acción, porque la acción no
+# toca el JSON que le pasas.
+#
+# Por qué `pull_request` y no `pull_request_target`: `pull_request_target`
+# ejecuta el workflow del **base** con permisos de escritura y el código del
+# PR a mano, que es la escalada clásica —un PR desde un fork acaba con un
+# token de escritura—. Con `pull_request` el token de un fork es de solo
+# lectura, así que un PR desde fuera **no recibe comentario**. Se acepta: aquí
+# los PR salen de ramas de este repositorio.
+
+name: Playground
+
+on:
+  pull_request:
+    paths-ignore:
+      - '.agents/skills/**'
+      - '.claude/skills/**'
+    types: [ opened, synchronize, reopened ]
+
+# Lo mínimo para editar la descripción del PR y dejar su comentario.
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: playground-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  preview:
+    name: Enlace de prueba
+    runs-on: ${{ vars.PSE_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      # El blueprint del PR: el mismo de la raíz, apuntando a esta rama.
+      # `--arg` y no interpolación de shell: el nombre de una rama lo escribe
+      # quien abre el PR y no tiene por qué ser inofensivo.
+      - name: Componer el blueprint de esta rama
+        id: bp
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          jq -c --arg ref "$HEAD_REF" '
+            (.steps[]? | select(.filesTree?.resource == "git:directory") | .filesTree.ref) = $ref
+          ' blueprint.json > /tmp/blueprint-pr.json
+          {
+            echo 'json<<BLUEPRINT_EOF'
+            cat /tmp/blueprint-pr.json
+            echo
+            echo 'BLUEPRINT_EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Publicar el enlace en el PR
+        uses: WordPress/action-wp-playground-pr-preview@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          blueprint: ${{ steps.bp.outputs.json }}
