@@ -357,7 +357,7 @@ final class CentreCatalogueSync {
 	 *
 	 * @param string $body     Catalogue body.
 	 * @param int    $expected Records the manifest declares; 0 if it does not say.
-	 * @return array<string, array{code:string, name:string, island:string, municipality:string, type:string, cep:string, active:bool}>
+	 * @return array<string, array{code:string, name:string, island:string, municipality:string, type:string, cep:string, eoep:string, active:bool}>
 	 * @throws RuntimeException On the first record that is wrong.
 	 */
 	private static function catalogue( string $body, int $expected ): array {
@@ -390,7 +390,7 @@ final class CentreCatalogueSync {
 	 *
 	 * @param mixed $item Record.
 	 * @param int   $idx  Position, for the error messages.
-	 * @return array{code:string, name:string, island:string, municipality:string, type:string, cep:string, active:bool}
+	 * @return array{code:string, name:string, island:string, municipality:string, type:string, cep:string, eoep:string, active:bool}
 	 * @throws RuntimeException When the record is wrong.
 	 */
 	private static function record( $item, int $idx ): array {
@@ -427,6 +427,8 @@ final class CentreCatalogueSync {
 			'municipality' => $text( 'municipality' ),
 			'type'         => $text( 'type' ),
 			'cep'          => $text( 'cep' ),
+			// El equipo de orientación de zona del centro, por su código: de él sale la zona (ADR-0004, adenda).
+			'eoep'         => $text( 'eoep' ),
 			'active'       => $item['active'],
 		);
 	}

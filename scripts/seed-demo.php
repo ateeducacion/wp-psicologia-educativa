@@ -67,9 +67,28 @@ $pse_centres = array(
 	'90000008' => array( 'IES Ejemplo Llano', 'Municipio E', 'Isla 2', 'Zona 3' ),
 );
 
+// Los equipos de zona, inventados también: son centros del catálogo, y de su nombre sale la zona.
+$pse_teams = array(
+	'Zona 1' => '90000101',
+	'Zona 2' => '90000102',
+	'Zona 3' => '90000103',
+);
+
 // El catálogo de centros, solo si no hay uno: en un sitio real lo trae su sincronización.
 if ( ! CentreCatalogue::all() ) {
 	$pse_catalogue = array();
+	foreach ( $pse_teams as $pse_zone => $pse_code ) {
+		$pse_catalogue[ $pse_code ] = array(
+			'code'         => $pse_code,
+			'name'         => $pse_zone,
+			'island'       => '',
+			'municipality' => '',
+			'type'         => '',
+			'cep'          => '',
+			'eoep'         => '',
+			'active'       => true,
+		);
+	}
 	foreach ( $pse_centres as $pse_code => $pse_centre ) {
 		$pse_catalogue[ $pse_code ] = array(
 			'code'         => $pse_code,
@@ -78,6 +97,7 @@ if ( ! CentreCatalogue::all() ) {
 			'municipality' => $pse_centre[1],
 			'type'         => '',
 			'cep'          => '',
+			'eoep'         => $pse_teams[ $pse_centre[3] ],
 			'active'       => true,
 		);
 	}
@@ -85,9 +105,10 @@ if ( ! CentreCatalogue::all() ) {
 	echo "Catálogo de centros de demostración.\n";
 }
 
-if ( ! Zones::centres() ) {
+// Solo quién atiende cada zona: la de cada centro la dice el catálogo.
+if ( ! Zones::staff() ) {
 	Zones::save(
-		array_map( static fn( array $centre ): string => $centre[3], $pse_centres ),
+		array(),
 		array(
 			'Zona 1' => array( 'psicologia@example.org' ),
 			'Zona 2' => array( 'psicologia@example.org' ),
