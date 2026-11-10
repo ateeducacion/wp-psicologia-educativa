@@ -160,6 +160,36 @@ class Test_Requests extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Sin lista pegada, la zona es el equipo de zona que dice el catálogo; la
+	 * lista manda sobre él, y una zona se puede escribir por el código de su equipo.
+	 */
+	public function test_the_zone_comes_from_the_catalogue_unless_the_list_says_otherwise() {
+		$catalogue             = CentreCatalogue::all();
+		$catalogue['90000001'] = array( 'eoep' => '90000101' ) + $catalogue['90000001'];
+		$catalogue['90000006'] = array( 'eoep' => '90000199' ) + $catalogue['90000006'];
+		$catalogue['90000101'] = array(
+			'code'   => '90000101',
+			'name'   => 'Equipo de zona Norte',
+			'active' => true,
+		);
+		update_option( CentreCatalogue::OPTION_CATALOGUE, $catalogue );
+
+		$this->assertSame( 'Zona 1', Zones::of_centre( '90000001' ), 'la lista pegada manda' );
+
+		Zones::save( array(), Zones::parse_staff( "90000101; norte@example.org\nOtra zona; otra@example.org" ) );
+		$this->assertSame( 'Equipo de zona Norte', Zones::of_centre( '90000001' ) );
+		$this->assertSame( '90000199', Zones::of_centre( '90000006' ), 'un equipo que no está en el catálogo se queda con su código' );
+		$this->assertSame( '', Zones::of_centre( '90000101' ) );
+		$this->assertSame( array( 'norte@example.org' ), Zones::emails( 'Equipo de zona Norte' ), 'el código del equipo se guarda como su nombre' );
+		$this->assertSame( array( '90000002' => 'Equipo de zona Norte' ), Zones::parse_centres( '90000002; 90000101' ) );
+		$this->assertEqualsCanonicalizing( array( 'Equipo de zona Norte', '90000199' ), Zones::from_catalogue() );
+		$this->assertSame( array( '90000199', 'Equipo de zona Norte', 'Otra zona' ), Zones::all() );
+
+		$id = Requests::create( $this->user( 'pse_school_head', '90000001' ), 'other' );
+		$this->assertSame( 'Equipo de zona Norte', Requests::row( get_post( $id ) )['zone'] );
+	}
+
+	/**
 	 * Cada rol recibe sus capacidades, y el despliegue puede dárselas a otro.
 	 */
 	public function test_roles_get_their_capabilities() {

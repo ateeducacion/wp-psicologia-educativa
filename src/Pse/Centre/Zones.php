@@ -8,10 +8,11 @@
 namespace Pse\Centre;
 
 /**
- * Las zonas no salen del catálogo de centros: son dos listas que pega quien
- * coordina (ADR-0004). «Código de centro; zona» dice a qué zona va cada
- * solicitud, y «zona; correo» dice a quién se avisa y quién la ve: el
- * profesional es la cuenta del sitio que tiene ese correo.
+ * La zona de un centro es su equipo de orientación de zona, que dice el
+ * catálogo de centros (ADR-0004, adenda). Quien coordina solo pega dos listas:
+ * «zona; correo» dice a quién se avisa y quién la ve —el profesional es la
+ * cuenta del sitio que tiene ese correo—, y «código de centro; zona» corrige
+ * o completa lo que el catálogo no dice.
  */
 final class Zones {
 
@@ -40,13 +41,53 @@ final class Zones {
 	}
 
 	/**
-	 * Zone of a centre, or '' when nobody has assigned it one.
+	 * Zone of a centre, or '' when neither the list nor the catalogue says.
+	 *
+	 * Manda la lista pegada; sin ella, el equipo de zona del catálogo.
 	 *
 	 * @param string $code Centre code.
 	 * @return string
 	 */
 	public static function of_centre( string $code ): string {
-		return (string) ( self::centres()[ trim( $code ) ] ?? '' );
+		$code   = trim( $code );
+		$pasted = (string) ( self::centres()[ $code ] ?? '' );
+		if ( '' !== $pasted ) {
+			return $pasted;
+		}
+		return self::label( (string) ( CentreCatalogue::find( $code )['eoep'] ?? '' ) );
+	}
+
+	/**
+	 * How a zone reads: a centre code of the catalogue becomes its name.
+	 *
+	 * Así una zona se puede escribir por el código de su equipo o por su
+	 * nombre, y se guarda siempre igual.
+	 *
+	 * @param string $zone Zone, as a name or as the 8-digit code of its team.
+	 * @return string
+	 */
+	public static function label( string $zone ): string {
+		$zone = trim( $zone );
+		if ( ! preg_match( '/^\d{8}$/', $zone ) ) {
+			return $zone;
+		}
+		return (string) ( CentreCatalogue::find( $zone )['name'] ?? $zone );
+	}
+
+	/**
+	 * The zones the catalogue knows: the teams its centres belong to.
+	 *
+	 * @return string[]
+	 */
+	public static function from_catalogue(): array {
+		$codes = array();
+		foreach ( CentreCatalogue::all() as $centre ) {
+			$eoep = (string) ( $centre['eoep'] ?? '' );
+			if ( '' !== $eoep ) {
+				$codes[ $eoep ] = true;
+			}
+		}
+		return array_map( array( self::class, 'label' ), array_map( 'strval', array_keys( $codes ) ) );
 	}
 
 	/**
@@ -55,7 +96,7 @@ final class Zones {
 	 * @return string[]
 	 */
 	public static function all(): array {
-		$zones = array_unique( array_merge( array_values( self::centres() ), array_keys( self::staff() ) ) );
+		$zones = array_unique( array_merge( self::from_catalogue(), array_values( self::centres() ), array_keys( self::staff() ) ) );
 		sort( $zones, SORT_NATURAL | SORT_FLAG_CASE );
 		return array_values( array_map( 'strval', $zones ) );
 	}
@@ -118,7 +159,7 @@ final class Zones {
 		$out = array();
 		foreach ( self::pairs( $text ) as $pair ) {
 			if ( preg_match( '/^\d{8}$/', $pair[0] ) ) {
-				$out[ $pair[0] ] = sanitize_text_field( $pair[1] );
+				$out[ $pair[0] ] = sanitize_text_field( self::label( $pair[1] ) );
 			}
 		}
 		return $out;
@@ -133,7 +174,7 @@ final class Zones {
 	public static function parse_staff( string $text ): array {
 		$out = array();
 		foreach ( self::pairs( $text ) as $pair ) {
-			$zone  = sanitize_text_field( $pair[0] );
+			$zone  = sanitize_text_field( self::label( $pair[0] ) );
 			$email = strtolower( sanitize_email( $pair[1] ) );
 			if ( '' !== $zone && is_email( $email ) && ! in_array( $email, $out[ $zone ] ?? array(), true ) ) {
 				$out[ $zone ][] = $email;

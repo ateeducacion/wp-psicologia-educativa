@@ -458,16 +458,21 @@ final class Views {
 	 */
 	private static function zones(): array {
 		$body  = '<form method="post" action="' . esc_url( home_url( '/' ) ) . '">' . Actions::fields( 'zones' ) . '<div class="row g-3">';
-		$body .= '<div class="col-lg-6"><div class="pse-card h-100"><h2><label for="pse-centres">Centros de cada zona</label></h2><p class="form-text">Una línea por centro: código del centro, punto y coma y nombre de la zona.</p>';
+		$body .= '<div class="col-lg-6"><div class="pse-card h-100"><h2><label for="pse-centres">Centros con otra zona</label></h2><p class="form-text">La zona de cada centro sale del catálogo de centros. Aquí solo van los que no la tienen o la tienen distinta. Una línea por centro: código del centro, punto y coma y la zona.</p>';
 		$body .= '<textarea class="form-control font-monospace" id="pse-centres" name="pse_centres" rows="14" placeholder="90000001; Zona 1">' . esc_textarea( Zones::centres_text() ) . '</textarea></div></div>';
-		$body .= '<div class="col-lg-6"><div class="pse-card h-100"><h2><label for="pse-staff">Profesionales de cada zona</label></h2><p class="form-text">Una línea por profesional: nombre de la zona, punto y coma y su correo. Es el correo al que llega el aviso y el de la cuenta con la que entra.</p>';
+		$body .= '<div class="col-lg-6"><div class="pse-card h-100"><h2><label for="pse-staff">Profesionales de cada zona</label></h2><p class="form-text">Una línea por profesional: la zona, punto y coma y su correo. Es el correo al que llega el aviso y el de la cuenta con la que entra.</p>';
 		$body .= '<textarea class="form-control font-monospace" id="pse-staff" name="pse_staff" rows="14" placeholder="Zona 1; profesional@example.org">' . esc_textarea( Zones::staff_text() ) . '</textarea></div></div>';
 		$body .= '</div><button class="btn btn-primary pse-btn mt-3" type="submit">Guardar las zonas</button></form>';
-		$body .= '<p class="pse-note">Las líneas sin un código de ocho cifras o sin un correo válido se descartan al guardar. Cambiar el reparto no mueve las solicitudes ya registradas.</p>';
+		$known = Zones::from_catalogue();
+		sort( $known, SORT_NATURAL | SORT_FLAG_CASE );
+		$body .= '<p class="pse-note">La zona se puede escribir por su nombre o por el código de su equipo. Las líneas sin un código de ocho cifras o sin un correo válido se descartan al guardar. Cambiar el reparto no mueve las solicitudes ya registradas.</p>';
+		if ( $known ) {
+			$body .= '<details class="pse-note"><summary>' . esc_html( 'Zonas del catálogo de centros (' . count( $known ) . ')' ) . '</summary><p>' . esc_html( implode( ' · ', $known ) ) . '</p></details>';
+		}
 		return array(
 			'tab'      => 'zones',
 			'title'    => Screen::TITLES['zones'],
-			'subtitle' => 'A qué zona va la solicitud de cada centro y quién la atiende.',
+			'subtitle' => 'Quién atiende cada zona, y los centros cuya zona no dice el catálogo.',
 			'body'     => $body,
 		);
 	}

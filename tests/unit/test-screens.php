@@ -447,6 +447,12 @@ class Test_Screens extends WP_UnitTestCase {
 		$this->assertSame( 'Zona Sur', Zones::of_centre( '90000002' ) );
 		$this->assertSame( array( 'norte@example.org' ), Zones::emails( 'Zona Norte' ) );
 
+		$catalogue             = CentreCatalogue::all();
+		$catalogue['90000001'] = array( 'eoep' => '90000101' ) + $catalogue['90000001'];
+		update_option( CentreCatalogue::OPTION_CATALOGUE, $catalogue );
+		$_POST = array();
+		$this->assertStringContainsString( 'Zonas del catálogo de centros (1)', Views::screen( 'zones' )['body'] );
+
 		$this->as_role( 'pse_psychologist' );
 		$this->assertStringContainsString( 'pse_notice=denied', $this->post( 'zones', array( 'pse_centres' => '90000003; Otra' ) ) );
 		$this->assertSame( '', Zones::of_centre( '90000003' ) );

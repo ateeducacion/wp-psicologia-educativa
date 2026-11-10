@@ -24,7 +24,7 @@ final class CentreCatalogue {
 	/**
 	 * All stored centres (both active and inactive), indexed by 8-digit code.
 	 *
-	 * @return array<string, array{code:string, name:string, island:string, municipality:string, type:string, cep:string, active:bool}>
+	 * @return array<string, array{code:string, name:string, island:string, municipality:string, type:string, cep:string, eoep?:string, active:bool}>
 	 */
 	public static function all(): array {
 		$raw = get_option( self::OPTION_CATALOGUE, array() );
@@ -34,7 +34,7 @@ final class CentreCatalogue {
 	/**
 	 * All active centres, indexed by code.
 	 *
-	 * @return array<string, array{code:string, name:string, island:string, municipality:string, type:string, cep:string, active:bool}>
+	 * @return array<string, array{code:string, name:string, island:string, municipality:string, type:string, cep:string, eoep?:string, active:bool}>
 	 */
 	public static function all_active(): array {
 		$all = self::all();
@@ -110,7 +110,7 @@ final class CentreCatalogue {
 	 * con él, a su isla.
 	 *
 	 * @param string $name Name.
-	 * @return array{code:string, name:string, island:string, municipality:string, type:string, cep:string, active:bool}|null
+	 * @return array{code:string, name:string, island:string, municipality:string, type:string, cep:string, eoep?:string, active:bool}|null
 	 */
 	public static function find_by_name( string $name ): ?array {
 		$name = trim( $name );
@@ -129,7 +129,7 @@ final class CentreCatalogue {
 	 * Find a centre by code (active or inactive).
 	 *
 	 * @param string $code 8-digit official code.
-	 * @return array{code:string, name:string, island:string, municipality:string, type:string, cep:string, active:bool}|null
+	 * @return array{code:string, name:string, island:string, municipality:string, type:string, cep:string, eoep?:string, active:bool}|null
 	 */
 	public static function find( string $code ): ?array {
 		$code = trim( $code );

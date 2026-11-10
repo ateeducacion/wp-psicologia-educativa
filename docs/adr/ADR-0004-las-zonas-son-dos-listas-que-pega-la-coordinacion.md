@@ -68,3 +68,24 @@ Haremos la opción 3, en la pestaña «Zonas», que ve quien tiene `pse_manage_z
 ### Neutras
 
 - Cambiar el reparto no mueve las solicitudes ya registradas.
+
+## Adenda — 2026-11-10
+
+El contexto decía que el catálogo de centros no trae la zona. El conjunto
+completo del que sale sí dice a qué equipo de orientación de zona pertenece
+cada centro, y cada equipo es a su vez un centro del catálogo, con su código y
+su nombre. Basta con que la copia ligera lleve ese código en un campo `eoep`.
+
+Con él, **la zona de un centro sale del catálogo**: es el nombre de su equipo
+(`Zones::of_centre()`). Lo que cambia respecto a la decisión:
+
+- La lista «zona; correo» sigue siendo de la coordinación: el catálogo no dice
+  quién atiende cada zona.
+- La lista «código de centro; zona» pasa a ser **solo para las excepciones**:
+  los centros que el catálogo deja sin equipo o los que se atienden desde otra
+  zona. Lo que diga manda sobre el catálogo.
+- Una zona se puede escribir por su nombre o por el código de su equipo; se
+  guarda siempre por el nombre (`Zones::label()`).
+
+Mientras la copia del catálogo no traiga `eoep`, todo sigue como estaba: la
+zona es la de la lista pegada.

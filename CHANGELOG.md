@@ -8,6 +8,13 @@ lee de la cabecera superior y la escribe en el `@version` del bundle.
 `make release` crea el tag y la release en GitHub; el despliegue de los snippets
 en el sitio de destino se hace después.
 
+## [0.1.1] — 2026-11-10
+
+### Cambiado
+
+- **La zona de cada centro sale del catálogo de centros**, de su equipo de orientación de zona, en cuanto la copia del catálogo lo trae. La coordinación ya solo tiene que decir quién atiende cada zona; la lista de centros queda para los que el catálogo deja sin zona o la tienen distinta
+- En «Zonas», una zona se puede escribir por su nombre o por el código de su equipo, y la pantalla enseña las zonas que conoce el catálogo
+
 ## [0.1.0] — 2026-11-10
 
 ### Añadido
