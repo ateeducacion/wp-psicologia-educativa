@@ -6,7 +6,7 @@
  * Priority: 15
  *
  * @package Pse
- * @version 0.1.1
+ * @version 0.1.2
  */
 
 // phpcs:disable
@@ -1322,6 +1322,27 @@ final class Access {
 				}
 			}
 		}
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	public static function attend_by_zones_list( array $allcaps, array $caps, array $args, \WP_User $user ): array {
+		if ( in_array( self::CAP_ATTEND, $caps, true ) && empty( $allcaps[ self::CAP_ATTEND ] ) && Zones::of_email( (string) $user->user_email ) ) {
+			$allcaps[ self::CAP_ATTEND ] = true;
+		}
+		return $allcaps;
 	}
 
 
@@ -2803,7 +2824,8 @@ final class Screen {
 				return 'administrator' === $role ? 'Administración' : translate_user_role( $names[ $role ] ?? $role );
 			}
 		}
-		return '';
+
+		return user_can( $user, Access::CAP_ATTEND ) ? translate_user_role( $names['pse_psychologist'] ?? 'pse_psychologist' ) : '';
 	}
 
 
@@ -2879,6 +2901,7 @@ final class App {
 		CentreSettings::register();
 		add_action( 'init', array( Requests::class, 'register' ), 10 );
 		add_action( 'init', array( Access::class, 'grant_caps_to_roles' ), 11 );
+		add_filter( 'user_has_cap', array( Access::class, 'attend_by_zones_list' ), 10, 4 );
 		Mailer::register();
 
 

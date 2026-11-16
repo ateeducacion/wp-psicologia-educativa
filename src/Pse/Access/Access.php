@@ -69,6 +69,27 @@ final class Access {
 	}
 
 	/**
+	 * Let whoever is in the zones list attend, even without the role.
+	 *
+	 * Así una baja la resuelve la coordinación desde «Zonas»: cambia el correo
+	 * de quien está de baja por el de quien la sustituye, y esa cuenta atiende
+	 * sin que la administración le dé el perfil. Solo atender: lo demás sigue
+	 * saliendo del rol.
+	 *
+	 * @param array<string, bool> $allcaps Capabilities the user has.
+	 * @param string[]            $caps    Capabilities being checked.
+	 * @param array<int, mixed>   $args    Arguments of the check.
+	 * @param \WP_User            $user    User.
+	 * @return array<string, bool>
+	 */
+	public static function attend_by_zones_list( array $allcaps, array $caps, array $args, \WP_User $user ): array {
+		if ( in_array( self::CAP_ATTEND, $caps, true ) && empty( $allcaps[ self::CAP_ATTEND ] ) && Zones::of_email( (string) $user->user_email ) ) {
+			$allcaps[ self::CAP_ATTEND ] = true;
+		}
+		return $allcaps;
+	}
+
+	/**
 	 * Centre code of a user, or '' when the account has none.
 	 *
 	 * @param int $user_id User; 0 is the current one.

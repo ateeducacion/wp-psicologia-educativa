@@ -8,6 +8,12 @@ lee de la cabecera superior y la escribe en el `@version` del bundle.
 `make release` crea el tag y la release en GitHub; el despliegue de los snippets
 en el sitio de destino se hace después.
 
+## [0.1.2] — 2026-11-16
+
+### Cambiado
+
+- **Quien está en la lista de «Zonas» atiende su zona aunque no tenga el perfil de psicología.** Una baja se resuelve desde «Zonas», cambiando el correo de quien está de baja por el de quien la sustituye, sin pedir a la administración que le dé el perfil
+
 ## [0.1.1] — 2026-11-10
 
 ### Cambiado

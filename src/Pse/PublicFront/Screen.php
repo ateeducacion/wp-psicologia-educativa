@@ -350,7 +350,8 @@ final class Screen {
 				return 'administrator' === $role ? 'Administración' : translate_user_role( $names[ $role ] ?? $role );
 			}
 		}
-		return '';
+		// Quien sustituye a alguien de baja atiende por estar en «Zonas», sin el rol.
+		return user_can( $user, Access::CAP_ATTEND ) ? translate_user_role( $names['pse_psychologist'] ?? 'pse_psychologist' ) : '';
 	}
 
 	/**
