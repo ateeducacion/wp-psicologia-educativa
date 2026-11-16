@@ -60,6 +60,7 @@ class Test_Boot extends WP_UnitTestCase {
 	public function test_boot_wired_every_module() {
 		$this->assertSame( 10, has_action( 'init', array( Requests::class, 'register' ) ) );
 		$this->assertSame( 11, has_action( 'init', array( Access::class, 'grant_caps_to_roles' ) ) );
+		$this->assertSame( 10, has_filter( 'user_has_cap', array( Access::class, 'attend_by_zones_list' ) ) );
 		$this->assertSame( 10, has_action( 'pse_request_created', array( Mailer::class, 'notify' ) ) );
 		$this->assertSame( 1, has_action( 'template_redirect', array( Screen::class, 'route' ) ) );
 	}

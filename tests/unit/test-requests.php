@@ -12,6 +12,7 @@ use Pse\Domain\Stats;
 use Pse\Domain\Vocabulary;
 use Pse\Notifications\Mailer;
 use Pse\PostType\Requests;
+use Pse\PublicFront\Screen;
 
 /**
  * La solicitud: qué guarda, quién la crea, quién la ve y a quién se avisa.
@@ -301,6 +302,31 @@ class Test_Requests extends WP_UnitTestCase {
 		$this->assertFalse( Requests::set_status( 0, 'attended', $psy ) );
 		$this->assertTrue( Requests::set_status( $post->ID, 'attended', $psy ) );
 		$this->assertSame( 'attended', Requests::row( get_post( $post->ID ) )['status'] );
+	}
+
+	/**
+	 * Quien sustituye a alguien de baja atiende en cuanto la coordinación pone
+	 * su correo en «Zonas», sin que nadie tenga que darle el perfil; y deja de
+	 * atender cuando lo quita.
+	 */
+	public function test_the_zones_list_lets_a_substitute_attend_without_the_role() {
+		$head = $this->user( 'pse_school_head', '90000001' );
+		$sub  = $this->user( 'subscriber', '', 'sustituta@example.org' );
+		$post = get_post( Requests::create( $head, 'distress' ) );
+
+		$this->assertFalse( user_can( $sub, Access::CAP_ATTEND ) );
+		$this->assertFalse( Access::can_view( $post, $sub ) );
+
+		Zones::save( Zones::centres(), array( 'Zona 1' => array( 'sustituta@example.org' ) ) );
+		$this->assertTrue( user_can( $sub, Access::CAP_ATTEND ) );
+		$this->assertTrue( Access::can_view( $post, $sub ) );
+		$this->assertTrue( Access::can_set_status( $post, $sub ) );
+		$this->assertFalse( user_can( $sub, Access::CAP_OVERSEE ), 'solo atender' );
+		$this->assertSame( 'Psicología educativa', Screen::role_label( get_userdata( $sub ) ) );
+
+		Zones::save( Zones::centres(), array( 'Zona 1' => array( 'uno@example.org' ) ) );
+		$this->assertFalse( user_can( $sub, Access::CAP_ATTEND ) );
+		$this->assertFalse( Access::can_view( $post, $sub ) );
 	}
 
 	/**

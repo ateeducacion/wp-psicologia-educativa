@@ -41,6 +41,7 @@ final class App {
 		CentreSettings::register();
 		add_action( 'init', array( Requests::class, 'register' ), 10 );
 		add_action( 'init', array( Access::class, 'grant_caps_to_roles' ), 11 );
+		add_filter( 'user_has_cap', array( Access::class, 'attend_by_zones_list' ), 10, 4 );
 		Mailer::register();
 
 		// La portada del sitio es el aplicativo: sin sesión, al acceso.

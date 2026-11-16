@@ -66,3 +66,23 @@ El centro de quien solicita se lee de la meta de usuario que diga el filtro `pse
 
 - La coordinación no cambia estados: eso es de quien atiende. La administración sí puede.
 - En el escritorio, las solicitudes solo las ve la administración (`pse_manage_app`).
+
+## Adenda — 2026-11-16
+
+Las bajas del personal de psicología se cubren con sustituciones durante el
+curso, y quien coordina no puede dar perfiles: eso es de la administración. Con
+la decisión original, una sustituta en la lista de «Zonas» recibía el aviso pero
+no podía entrar a atenderlo hasta que alguien le diese el rol.
+
+Desde ahora, **estar en la lista «zona; correo» da `pse_attend_requests`**
+aunque la cuenta no tenga el rol (`Access::attend_by_zones_list()`, en el filtro
+`user_has_cap`). Solo esa capacidad: ver todo, las estadísticas y las zonas
+siguen saliendo del rol.
+
+- Una baja se resuelve en «Zonas»: se cambia el correo de quien está de baja por
+  el de quien la sustituye. Las solicitudes van a la zona, no a la persona, así
+  que la sustituta ve también las anteriores.
+- Se descartó un estado por persona («en activo», «baja», «sustituto»): añade un
+  dato que mantener y no cambia quién atiende, que ya lo dice la lista.
+- Contra: quien tiene `pse_manage_zones` decide quién atiende. Ya lo decidía al
+  elegir a quién llega el aviso; ahora también quién lo abre.
