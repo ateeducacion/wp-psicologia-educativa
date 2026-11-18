@@ -7,7 +7,7 @@ related:
   issues: []
   prs: []
   sdds: []
-  adrs: [ADR-0001, ADR-0002, ADR-0003, ADR-0004, ADR-0005, ADR-0006, ADR-0007]
+  adrs: [ADR-0001, ADR-0002, ADR-0003, ADR-0004, ADR-0005, ADR-0006, ADR-0007, ADR-0008]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -33,3 +33,4 @@ encargo y la maqueta— es de quien despliega y vive en `.local/`.
 | [ADR-0005](ADR-0005-tres-perfiles-y-el-centro-sale-de-la-cuenta.md) | Tres perfiles, y el centro sale de la cuenta | Aceptada |
 | [ADR-0006](ADR-0006-el-aviso-por-correo-no-lleva-el-asunto.md) | El aviso por correo no lleva el asunto | Aceptada |
 | [ADR-0007](ADR-0007-el-catalogo-de-centros-es-una-copia-local.md) | El catálogo de centros es una copia local que se pone al día sola | Aceptada |
+| [ADR-0008](ADR-0008-lo-del-sitio-va-en-el-sitio-y-lo-de-la-persona-en-su-cuenta.md) | Lo del sitio va en el sitio, y lo de la persona en su cuenta | Aceptada |

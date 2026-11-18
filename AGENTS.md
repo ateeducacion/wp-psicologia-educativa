@@ -317,6 +317,12 @@ que buscan. Sin ese fichero solo se aplican las genéricas, y el script lo avisa
   diferencia del entorno local, que es un sitio único. Cualquier cosa que
   construya el nombre de una tabla o invoque `wp eval-file` sin `--url=` merece
   una mirada antes de darla por buena.
+- En un multisitio **la meta de usuario es de toda la red**. Lo que dependa del
+  sitio —qué gestiona o atiende alguien, cualquier número de un contenido o de
+  un término— va en una opción del sitio o en `update_user_option()`, nunca en
+  `update_user_meta()`; esta solo guarda datos de la persona, como su centro
+  ([ADR-0008](docs/adr/ADR-0008-lo-del-sitio-va-en-el-sitio-y-lo-de-la-persona-en-su-cuenta.md)).
+  `tests/unit/test-site-data.php` lo comprueba.
 
 ---
 
