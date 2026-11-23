@@ -89,7 +89,7 @@ Ni una capa más. Si crees que hace falta otra, escribe la ADR primero.
 | Antes de commit/PR | `make check` |
 | Comprobar el código como lo revisaría WordPress.org | `make check-plugin` (errores **y avisos**) |
 | Publicar una versión | `make release` (tras cerrar el bloque del CHANGELOG) |
-| Llevar un snippet al sitio de destino | `npm run snippets -- push <id> --file snippets/… --dry-run` (sin `--yes` no escribe) |
+| Llevar un snippet al sitio de destino | `npm run snippets -- …`, siguiendo la skill `wp-code-snippets`: `list` → `diff` → `pull` → `push --dry-run` → `push --yes` solo con aprobación expresa |
 
 Sitio local: <http://localhost:8958> (`admin` / `password`). Tests en el 8959.
 Los puertos son otros que los de los aplicativos hermanos para poder tenerlos arrancados a la vez.
@@ -348,6 +348,7 @@ difieren.
 | Seguridad | `security-audit`, `wp-plugin-security`, `github-actions-hardening` |
 | WordPress | `wp-plugin-development`, `wp-performance`, `wp-wpcli-and-ops`, `wp-project-triage`, `wp-playground`, `blueprint` |
 | Pruebas | `playwright-cli` |
+| Despliegue | `wp-code-snippets` |
 | Propia | `changelog` — el bloque de versión y `make release` |
 
 Skills propias: créalas en `.agents/skills/<nombre>/` y ejecuta
