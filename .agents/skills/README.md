@@ -79,6 +79,12 @@ Las tres se leen juntas con la política de permisos de la casa: toda decisión 
 |---|---|---|
 | `playwright-cli` | Tocar `tests/browser/` o `make test-browser` | [`microsoft/playwright-cli`](https://github.com/microsoft/playwright-cli) |
 
+### Despliegue
+
+| Skill | Léela antes de | Origen |
+|---|---|---|
+| `wp-code-snippets` | Leer, comparar o llevar un snippet al sitio de destino con `npm run snippets` | [`erseco/code-snippets-client`](https://github.com/erseco/code-snippets-client) |
+
 ### Propias
 
 | Skill | Léela antes de |
