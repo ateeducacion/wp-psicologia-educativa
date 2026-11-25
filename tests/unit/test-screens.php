@@ -439,7 +439,7 @@ class Test_Screens extends WP_UnitTestCase {
 
 		$this->assertCount( 3, $lines );
 		$this->assertStringEndsWith( '"Estado";"Tipo";"Autorización"', $lines[0] );
-		$this->assertStringEndsWith( '"Atendida";"Grupal";"No precisa autorización (mayor de edad)"', $lines[1] );
+		$this->assertStringEndsWith( '"Atendida";"Grupal";"No requiere autorización familiar (alumnado mayor de edad)"', $lines[1] );
 		$this->assertStringEndsWith( '"Pendiente";"—";"—"', $lines[2], 'las anteriores al tipo y la autorización salen con «—»' );
 		$this->assertStringStartsWith( '"Número";"Fecha";"Código de centro"', $lines[0] );
 		$this->assertStringContainsString( '"\'=HIPERVINCULO(""x"")"', $lines[1] );

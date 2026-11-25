@@ -45,7 +45,7 @@ estado están. El aplicativo quita el reenvío y deja el registro.
 4. **Reparto por zona.** La solicitud va a la zona del centro, y se avisa por
    correo a quien la atiende, sin el asunto (ADR-0004, ADR-0006).
 5. **Atender.** El profesional ve solo las solicitudes de sus zonas y solo
-   cambia su estado: pendiente, en atención, atendida o no realizada.
+   cambia su estado: pendiente, en atención, atendida o baja.
 6. **Seguir.** La coordinación ve todas, las filtra por estado, asunto, tipo, zona
    y municipio, y las exporta en CSV.
 7. **Contar.** Una pantalla de estadísticas: por mes, asunto, tipo, zona,
@@ -64,7 +64,6 @@ estado están. El aplicativo quita el reenvío y deja el registro.
 
 - La lista definitiva de asuntos.
 - La relación de centros por zona y el correo de cada profesional.
-- El nombre definitivo del estado «No realizada».
 - El texto legal de la declaración de autorización (filtro
   `pse_authorization_statement`).
 - Las solicitudes registradas antes del aplicativo, si se cargan.

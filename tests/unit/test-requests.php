@@ -117,7 +117,7 @@ class Test_Requests extends WP_UnitTestCase {
 	 */
 	public function test_states() {
 		$this->assertSame( array( 'pending', 'in_progress', 'attended', 'withdrawn' ), array_keys( Vocabulary::states() ) );
-		$this->assertSame( 'No realizadas', Vocabulary::state_plural( 'withdrawn' ) );
+		$this->assertSame( 'Bajas', Vocabulary::state_plural( 'withdrawn' ) );
 		$this->assertSame( 'En atención', Vocabulary::state_label( 'in_progress' ) );
 		$this->assertSame( 'Pendiente', Vocabulary::state_label( 'otro' ) );
 		$this->assertSame( 'Atendidas', Vocabulary::state_plural( 'attended' ) );
