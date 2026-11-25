@@ -115,3 +115,13 @@ Las solicitudes anteriores no tienen tipo ni autorización y se muestran con «�
   el tipo ni la autorización.
 - Los nombres definitivos del estado nuevo, los asuntos y el texto legal los
   da la coordinación.
+
+## Adenda — 2026-11-25
+
+La coordinación mandó por correo la redacción definitiva. El estado `withdrawn`
+se llama «Baja» (retirada de la solicitud o revocación de la autorización por
+parte de la familia), y las dos opciones de la autorización pasan a ser «Se
+cuenta con la autorización familiar firmada (alumnado menor de edad)» y «No
+requiere autorización familiar (alumnado mayor de edad)». Los valores que se
+guardan no cambian. Su lista de asuntos va en el filtro `pse_subjects` del
+despliegue.

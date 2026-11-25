@@ -6,7 +6,7 @@
  * Priority: 15
  *
  * @package Pse
- * @version 0.2.0
+ * @version 0.2.1
  */
 
 // phpcs:disable
@@ -116,8 +116,8 @@ final class Vocabulary {
 
 	public static function authorizations(): array {
 		return array(
-			'authorized'   => 'Tiene autorización (menor de edad)',
-			'not_required' => 'No precisa autorización (mayor de edad)',
+			'authorized'   => 'Se cuenta con la autorización familiar firmada (alumnado menor de edad)',
+			'not_required' => 'No requiere autorización familiar (alumnado mayor de edad)',
 		);
 	}
 
@@ -162,7 +162,7 @@ final class Vocabulary {
 			self::STATUS_PENDING     => 'Pendiente',
 			self::STATUS_IN_PROGRESS => 'En atención',
 			self::STATUS_ATTENDED    => 'Atendida',
-			self::STATUS_WITHDRAWN   => 'No realizada',
+			self::STATUS_WITHDRAWN   => 'Baja',
 		);
 	}
 
@@ -187,7 +187,7 @@ final class Vocabulary {
 			self::STATUS_PENDING     => 'Pendientes',
 			self::STATUS_IN_PROGRESS => 'En atención',
 			self::STATUS_ATTENDED    => 'Atendidas',
-			self::STATUS_WITHDRAWN   => 'No realizadas',
+			self::STATUS_WITHDRAWN   => 'Bajas',
 		);
 		return $plural[ $slug ] ?? '';
 	}

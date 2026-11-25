@@ -8,6 +8,12 @@ lee de la cabecera superior y la escribe en el `@version` del bundle.
 `make release` crea el tag y la release en GitHub; el despliegue de los snippets
 en el sitio de destino se hace después.
 
+## [0.2.1] — 2026-11-25
+
+### Cambiado
+
+- Con la redacción de la coordinación: el estado «No realizada» pasa a llamarse **«Baja»**, y las opciones de la autorización, a «Se cuenta con la autorización familiar firmada (alumnado menor de edad)» y «No requiere autorización familiar (alumnado mayor de edad)». Las solicitudes ya registradas conservan su valor
+
 ## [0.2.0] — 2026-11-25
 
 ### Añadido
