@@ -34,3 +34,4 @@ encargo y la maqueta— es de quien despliega y vive en `.local/`.
 | [ADR-0006](ADR-0006-el-aviso-por-correo-no-lleva-el-asunto.md) | El aviso por correo no lleva el asunto | Aceptada |
 | [ADR-0007](ADR-0007-el-catalogo-de-centros-es-una-copia-local.md) | El catálogo de centros es una copia local que se pone al día sola | Aceptada |
 | [ADR-0008](ADR-0008-lo-del-sitio-va-en-el-sitio-y-lo-de-la-persona-en-su-cuenta.md) | Lo del sitio va en el sitio, y lo de la persona en su cuenta | Aceptada |
+| [ADR-0009](ADR-0009-la-solicitud-dice-el-tipo-y-si-hay-autorizacion.md) | La solicitud dice el tipo de intervención y si hay autorización | Propuesta |

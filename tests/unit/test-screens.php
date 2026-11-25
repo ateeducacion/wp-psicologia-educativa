@@ -234,6 +234,10 @@ class Test_Screens extends WP_UnitTestCase {
 
 		$this->assertStringContainsString( 'value="IES Ejemplo Norte · 90000001" readonly', $body );
 		$this->assertStringContainsString( '<option value="bullying">Acoso o ciberacoso escolar</option>', $body );
+		$this->assertStringContainsString( 'name="pse_scope" value="group" required', $body );
+		$this->assertStringContainsString( 'name="pse_authorization" value="not_required" required', $body );
+		$this->assertStringContainsString( 'declara bajo su responsabilidad', $body );
+		$this->assertStringNotContainsString( 'value="no"', $body, 'no hay opción «no tiene autorización»' );
 		$this->assertStringContainsString( 'No escriba datos del alumnado.', $body );
 		$this->assertStringNotContainsString( '<textarea', $body );
 		$this->assertStringNotContainsString( 'type="text"', $body );
@@ -246,7 +250,14 @@ class Test_Screens extends WP_UnitTestCase {
 	public function test_asking_creates_the_request_and_shows_it() {
 		$this->as_role( 'pse_school_head', '90000001' );
 
-		$stop = $this->post( 'create', array( 'pse_subject' => 'bullying' ) );
+		$stop = $this->post(
+			'create',
+			array(
+				'pse_subject'       => 'bullying',
+				'pse_scope'         => 'group',
+				'pse_authorization' => 'authorized',
+			)
+		);
 
 		$this->assertSame( 1, Requests::query()->found_posts );
 		$id = Requests::query()->posts[0]->ID;
@@ -261,6 +272,7 @@ class Test_Screens extends WP_UnitTestCase {
 		$this->assertStringContainsString( 'Solicitud n.º ' . gmdate( 'Y' ) . '-0001 registrada.', $body );
 		$this->assertStringContainsString( 'Se ha avisado por correo', $body );
 		$this->assertStringContainsString( 'Acoso o ciberacoso escolar', $body );
+		$this->assertStringContainsString( 'Grupal', $body );
 		$this->assertStringContainsString( 'pse-state-pending', $body );
 		$this->assertStringNotContainsString( 'Cambiar estado', $body );
 	}
@@ -272,6 +284,17 @@ class Test_Screens extends WP_UnitTestCase {
 		$this->as_role( 'pse_school_head', '90000001' );
 
 		$this->assertStringContainsString( 'pse_notice=subject', $this->post( 'create', array( 'pse_subject' => 'inventado' ) ) );
+		$this->assertStringContainsString( 'pse_notice=scope', $this->post( 'create', array( 'pse_subject' => 'bullying' ) ) );
+		$this->assertStringContainsString(
+			'pse_notice=authorization',
+			$this->post(
+				'create',
+				array(
+					'pse_subject' => 'bullying',
+					'pse_scope'   => 'individual',
+				)
+			)
+		);
 		$_POST = array(
 			Actions::FIELD => 'create',
 			Actions::NONCE => 'malo',
@@ -294,7 +317,7 @@ class Test_Screens extends WP_UnitTestCase {
 	 */
 	public function test_psychology_sees_its_zone_and_changes_the_state() {
 		$head = $this->as_role( 'pse_school_head', '90000001' );
-		$id   = Requests::create( $head, 'distress' );
+		$id   = Requests::create( $head, 'distress', 'individual', 'authorized' );
 
 		$this->as_role( 'pse_psychologist', '', 'uno@example.org' );
 		$screen = Views::screen( 'zone' );
@@ -341,7 +364,7 @@ class Test_Screens extends WP_UnitTestCase {
 	public function test_the_coordination_lists_filters_and_exports() {
 		$head = $this->as_role( 'pse_school_head', '90000001' );
 		for ( $i = 0; $i < Requests::PER_PAGE + 1; $i++ ) {
-			Requests::create( $head, 0 === $i ? 'bullying' : 'distress' );
+			Requests::create( $head, 0 === $i ? 'bullying' : 'distress', 'individual', 'authorized' );
 		}
 
 		$this->as_role( 'pse_coordinator' );
@@ -387,21 +410,37 @@ class Test_Screens extends WP_UnitTestCase {
 		$csv   = Views::csv(
 			array(
 				array(
-					'number'       => '2026-0001',
-					'date'         => '2026-11-10',
+					'number'        => '2026-0001',
+					'date'          => '2026-11-10',
+					'centre_code'   => '90000001',
+					'centre_name'   => '=HIPERVINCULO("x")',
+					'municipality'  => 'Municipio "A"',
+					'island'        => 'Isla 1',
+					'zone'          => 'Zona 1',
+					'subject'       => 'bullying',
+					'status'        => 'attended',
+					'scope'         => 'group',
+					'authorization' => 'not_required',
+				),
+				array(
+					'number'       => '2025-0001',
+					'date'         => '2025-11-10',
 					'centre_code'  => '90000001',
-					'centre_name'  => '=HIPERVINCULO("x")',
-					'municipality' => 'Municipio "A"',
+					'centre_name'  => 'IES Ejemplo Norte',
+					'municipality' => 'Municipio A',
 					'island'       => 'Isla 1',
 					'zone'         => 'Zona 1',
-					'subject'      => 'bullying',
-					'status'       => 'attended',
+					'subject'      => 'other',
+					'status'       => 'pending',
 				),
 			)
 		);
 		$lines = explode( "\r\n", trim( $csv ) );
 
-		$this->assertCount( 2, $lines );
+		$this->assertCount( 3, $lines );
+		$this->assertStringEndsWith( '"Estado";"Tipo";"Autorización"', $lines[0] );
+		$this->assertStringEndsWith( '"Atendida";"Grupal";"No precisa autorización (mayor de edad)"', $lines[1] );
+		$this->assertStringEndsWith( '"Pendiente";"—";"—"', $lines[2], 'las anteriores al tipo y la autorización salen con «—»' );
 		$this->assertStringStartsWith( '"Número";"Fecha";"Código de centro"', $lines[0] );
 		$this->assertStringContainsString( '"\'=HIPERVINCULO(""x"")"', $lines[1] );
 		$this->assertStringContainsString( '"Municipio ""A"""', $lines[1] );
@@ -420,11 +459,12 @@ class Test_Screens extends WP_UnitTestCase {
 		$this->as_role( 'pse_coordinator' );
 		$this->assertStringContainsString( 'Sin datos todavía.', Views::screen( 'stats' )['body'] );
 
-		Requests::create( $this->as_role( 'pse_school_head', '90000001' ), 'bullying' );
+		Requests::create( $this->as_role( 'pse_school_head', '90000001' ), 'bullying', 'individual', 'authorized' );
 		$this->as_role( 'pse_coordinator' );
 		$body = Views::screen( 'stats' )['body'];
 		$this->assertStringContainsString( '<b>1</b><span>Solicitudes</span>', $body );
 		$this->assertStringContainsString( '<dt>Acoso o ciberacoso escolar</dt>', $body );
+		$this->assertStringContainsString( '<dt>Individual</dt>', $body );
 		$this->assertStringContainsString( '<dt>Municipio A</dt>', $body );
 		$this->assertStringContainsString( 'style="width:100%"', $body );
 		$this->assertStringContainsString( 'no alumnado', $body );
@@ -463,7 +503,7 @@ class Test_Screens extends WP_UnitTestCase {
 	 */
 	public function test_a_request_without_staff_does_not_promise_a_notice() {
 		Zones::save( array(), array() );
-		$id   = Requests::create( $this->as_role( 'pse_school_head', '90000001' ), 'other' );
+		$id   = Requests::create( $this->as_role( 'pse_school_head', '90000001' ), 'other', 'individual', 'authorized' );
 		$_GET = array( 'pse_created' => (string) $id );
 
 		$body = Views::screen( 'centre' )['body'];

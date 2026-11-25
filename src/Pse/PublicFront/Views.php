@@ -89,15 +89,37 @@ final class Views {
 		foreach ( Vocabulary::subjects() as $slug => $label ) {
 			$body .= '<option value="' . esc_attr( $slug ) . '">' . esc_html( $label ) . '</option>';
 		}
-		$body .= '</select><p class="form-text mb-0">Lista cerrada: no hay ningún campo de texto libre.</p></div>';
+		$body .= '</select><p class="form-text">Lista cerrada: no hay ningún campo de texto libre. Si encaja en más de un asunto, elija el primero de la lista.</p>';
+		$body .= self::radios( 'scope', 'Tipo de intervención', Vocabulary::scopes() ) . '</div>';
+
+		$body .= '<div class="pse-card"><h2>Autorización</h2>';
+		$body .= self::radios( 'authorization', 'Autorización de la familia o de quien ejerce la tutela', Vocabulary::authorizations() );
+		$body .= '<p class="form-text mb-0">' . esc_html( Vocabulary::authorization_statement() ) . '</p></div>';
 		$body .= '<button class="btn btn-primary pse-btn" type="submit">Enviar solicitud</button></form>';
 
 		return array(
 			'tab'      => 'new',
 			'title'    => Screen::TITLES['new'],
-			'subtitle' => 'Indique solo el asunto. El profesional de psicología educativa de su zona se pondrá en contacto con el centro.',
+			'subtitle' => 'Indique el asunto, el tipo y la autorización. El profesional de psicología educativa de su zona se pondrá en contacto con el centro.',
 			'body'     => $body,
 		);
+	}
+
+	/**
+	 * A required group of radio buttons of a closed list.
+	 *
+	 * @param string                $name    Field, without the prefix.
+	 * @param string                $legend  Legend.
+	 * @param array<string, string> $options Slug => label.
+	 * @return string
+	 */
+	private static function radios( string $name, string $legend, array $options ): string {
+		$out = '<fieldset class="mt-3"><legend class="form-label">' . esc_html( $legend ) . ' <span class="text-danger" aria-hidden="true">*</span></legend>';
+		foreach ( $options as $slug => $label ) {
+			$id   = 'pse-' . $name . '-' . $slug;
+			$out .= '<div class="form-check"><input class="form-check-input" type="radio" id="' . esc_attr( $id ) . '" name="' . esc_attr( 'pse_' . $name ) . '" value="' . esc_attr( $slug ) . '" required><label class="form-check-label" for="' . esc_attr( $id ) . '">' . esc_html( $label ) . '</label></div>';
+		}
+		return $out . '</fieldset>';
 	}
 
 	/**
@@ -128,7 +150,7 @@ final class Views {
 	private static function chips( string $tab, array $scope, string $current ): string {
 		unset( $scope['status'], $scope['paged'] );
 		$keep = array( Screen::ARG_TAB => $tab );
-		foreach ( array( 'subject', 'zone', 'municipality', 'search' ) as $name ) {
+		foreach ( array( 'subject', 'scope', 'zone', 'municipality', 'search' ) as $name ) {
 			$keep[ 'pse_f_' . $name ] = (string) ( $scope[ $name ] ?? '' );
 		}
 		$states = array( '' => 'Todas' );
@@ -154,14 +176,16 @@ final class Views {
 	 */
 	private static function table( array $posts, array $columns, string $back = '' ): string {
 		$heads = array(
-			'number'       => 'N.º',
-			'date'         => 'Fecha',
-			'centre'       => 'Centro',
-			'municipality' => 'Municipio',
-			'zone'         => 'Zona',
-			'subject'      => 'Asunto',
-			'status'       => 'Estado',
-			'change'       => 'Cambiar estado',
+			'number'        => 'N.º',
+			'date'          => 'Fecha',
+			'centre'        => 'Centro',
+			'municipality'  => 'Municipio',
+			'zone'          => 'Zona',
+			'subject'       => 'Asunto',
+			'scope'         => 'Tipo',
+			'authorization' => 'Autorización',
+			'status'        => 'Estado',
+			'change'        => 'Cambiar estado',
 		);
 		if ( ! $posts ) {
 			return '<p class="pse-empty">No hay solicitudes que mostrar.</p>';
@@ -174,14 +198,16 @@ final class Views {
 		foreach ( $posts as $post ) {
 			$row   = Requests::row( $post );
 			$cells = array(
-				'number'       => '<strong>' . esc_html( $row['number'] ) . '</strong>',
-				'date'         => esc_html( mysql2date( 'd/m/Y', $post->post_date ) ),
-				'centre'       => esc_html( $row['centre_name'] ) . ' <small class="text-secondary">' . esc_html( $row['centre_code'] ) . '</small>',
-				'municipality' => esc_html( $row['municipality'] ),
-				'zone'         => esc_html( $row['zone'] ),
-				'subject'      => esc_html( Vocabulary::subject_label( $row['subject'] ) ),
-				'status'       => self::badge( $row['status'] ),
-				'change'       => in_array( 'change', $columns, true ) ? self::status_form( $post, $row, $back ) : '',
+				'number'        => '<strong>' . esc_html( $row['number'] ) . '</strong>',
+				'date'          => esc_html( mysql2date( 'd/m/Y', $post->post_date ) ),
+				'centre'        => esc_html( $row['centre_name'] ) . ' <small class="text-secondary">' . esc_html( $row['centre_code'] ) . '</small>',
+				'municipality'  => esc_html( $row['municipality'] ),
+				'zone'          => esc_html( $row['zone'] ),
+				'subject'       => esc_html( Vocabulary::subject_label( $row['subject'] ) ),
+				'scope'         => esc_html( Vocabulary::label_in( Vocabulary::scopes(), $row['scope'] ) ),
+				'authorization' => esc_html( Vocabulary::label_in( Vocabulary::authorizations(), $row['authorization'] ) ),
+				'status'        => self::badge( $row['status'] ),
+				'change'        => in_array( 'change', $columns, true ) ? self::status_form( $post, $row, $back ) : '',
 			);
 			$out  .= '<tr>';
 			foreach ( $columns as $column ) {
@@ -254,7 +280,7 @@ final class Views {
 			$told  = Zones::emails( $row['zone'] ) ? 'Se ha avisado por correo al profesional de su zona, que se pondrá en contacto con el centro.' : 'Queda registrada y a la vista de la coordinación.';
 			$body .= '<div class="alert alert-success" role="status"><strong>' . esc_html( 'Solicitud n.º ' . $row['number'] . ' registrada.' ) . '</strong> ' . esc_html( $told ) . '</div>';
 		}
-		$body .= self::table( $query->posts, array( 'number', 'date', 'subject', 'status' ) );
+		$body .= self::table( $query->posts, array( 'number', 'date', 'subject', 'scope', 'status' ) );
 		$body .= self::pagination( $query, array( Screen::ARG_TAB => 'centre' ) );
 		$body .= '<p class="pse-note">Solo se muestran las solicitudes de su centro.</p>';
 		return array(
@@ -282,7 +308,7 @@ final class Views {
 			$body .= '<div class="alert alert-warning">Su correo no figura en ninguna zona todavía. La coordinación asigna las zonas en «Zonas».</div>';
 		}
 		$body .= self::chips( 'zone', $scope, $status );
-		$body .= self::table( $query->posts, array( 'number', 'date', 'centre', 'municipality', 'subject', 'status', 'change' ), $status );
+		$body .= self::table( $query->posts, array( 'number', 'date', 'centre', 'municipality', 'subject', 'scope', 'authorization', 'status', 'change' ), $status );
 		$body .= self::pagination(
 			$query,
 			array(
@@ -322,7 +348,7 @@ final class Views {
 	 * @return array<string, string>
 	 */
 	private static function all_list(): array {
-		$filters = self::filters( array( 'status', 'subject', 'zone', 'municipality', 'search' ) );
+		$filters = self::filters( array( 'status', 'subject', 'scope', 'zone', 'municipality', 'search' ) );
 		$query   = Requests::query( $filters + array( 'paged' => absint( Screen::arg( 'pse_p' ) ) ) );
 		$args    = array( Screen::ARG_TAB => 'all' );
 		foreach ( $filters as $name => $value ) {
@@ -339,10 +365,11 @@ final class Views {
 		$body .= self::select( 'municipality', 'Todos los municipios', array_combine( $municipalities, $municipalities ), (string) ( $filters['municipality'] ?? '' ) );
 		$body .= self::select( 'zone', 'Todas las zonas', array_combine( $zones, $zones ), (string) ( $filters['zone'] ?? '' ) );
 		$body .= self::select( 'subject', 'Todos los asuntos', Vocabulary::subjects(), (string) ( $filters['subject'] ?? '' ) );
+		$body .= self::select( 'scope', 'Todos los tipos', Vocabulary::scopes(), (string) ( $filters['scope'] ?? '' ) );
 		$body .= '<button class="btn btn-outline-primary" type="submit">Filtrar</button></form>';
 
 		$body .= self::chips( 'all', $filters, (string) ( $filters['status'] ?? '' ) );
-		$body .= self::table( $query->posts, array( 'number', 'date', 'centre', 'municipality', 'zone', 'subject', 'status' ) );
+		$body .= self::table( $query->posts, array( 'number', 'date', 'centre', 'municipality', 'zone', 'subject', 'scope', 'authorization', 'status' ) );
 		$body .= '<div class="pse-list-foot">' . self::pagination( $query, $args );
 		$body .= '<a class="btn btn-primary pse-btn ms-auto" href="' . esc_url( Screen::url( $args + array( Screen::ARG_CSV => '1' ) ) ) . '">Exportar resultados como CSV</a></div>';
 		$body .= '<p class="pse-note">La exportación incluye todas las páginas del listado filtrado.</p>';
@@ -361,9 +388,9 @@ final class Views {
 	 * @return string
 	 */
 	public static function csv( array $rows ): string {
-		$lines = array( array( 'Número', 'Fecha', 'Código de centro', 'Centro', 'Municipio', 'Isla', 'Zona', 'Asunto', 'Estado' ) );
+		$lines = array( array( 'Número', 'Fecha', 'Código de centro', 'Centro', 'Municipio', 'Isla', 'Zona', 'Asunto', 'Estado', 'Tipo', 'Autorización' ) );
 		foreach ( $rows as $row ) {
-			$lines[] = array( $row['number'], $row['date'], $row['centre_code'], $row['centre_name'], $row['municipality'], $row['island'], $row['zone'], Vocabulary::subject_label( (string) $row['subject'] ), Vocabulary::state_label( (string) $row['status'] ) );
+			$lines[] = array( $row['number'], $row['date'], $row['centre_code'], $row['centre_name'], $row['municipality'], $row['island'], $row['zone'], Vocabulary::subject_label( (string) $row['subject'] ), Vocabulary::state_label( (string) $row['status'] ), Vocabulary::label_in( Vocabulary::scopes(), (string) ( $row['scope'] ?? '' ) ), Vocabulary::label_in( Vocabulary::authorizations(), (string) ( $row['authorization'] ?? '' ) ) );
 		}
 		$out = '';
 		foreach ( $lines as $line ) {
@@ -387,7 +414,7 @@ final class Views {
 		if ( ! current_user_can( Access::CAP_OVERSEE ) ) {
 			return;
 		}
-		$csv = self::csv( Requests::rows( self::filters( array( 'status', 'subject', 'zone', 'municipality', 'search' ) ) ) );
+		$csv = self::csv( Requests::rows( self::filters( array( 'status', 'subject', 'scope', 'zone', 'municipality', 'search' ) ) ) );
 		header( 'Content-Type: text/csv; charset=utf-8' );
 		header( 'Content-Disposition: attachment; filename="solicitudes-' . wp_date( 'Y-m-d' ) . '.csv"' );
 		// El BOM es para que la hoja de cálculo lea las tildes.
@@ -435,6 +462,7 @@ final class Views {
 		$cards = array(
 			'Por mes'       => self::bars( $stats['month'], $months ),
 			'Por asunto'    => self::bars( $stats['subject'], Vocabulary::subjects() ),
+			'Por tipo'      => self::bars( $stats['scope'], Vocabulary::scopes() ),
 			'Por zona'      => self::bars( $stats['zone'] ),
 			'Por municipio' => self::bars( $stats['municipality'] ),
 			'Por isla'      => self::bars( $stats['island'] ),
@@ -446,7 +474,7 @@ final class Views {
 		return array(
 			'tab'      => 'stats',
 			'title'    => Screen::TITLES['stats'],
-			'subtitle' => 'Número de solicitudes por mes, asunto, zona, municipio e isla.',
+			'subtitle' => 'Número de solicitudes por mes, asunto, tipo, zona, municipio e isla.',
 			'body'     => $body,
 		);
 	}

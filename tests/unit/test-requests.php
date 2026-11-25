@@ -113,10 +113,11 @@ class Test_Requests extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tres estados, con su rótulo y su plural; uno desconocido se lee como pendiente.
+	 * Cuatro estados, con su rótulo y su plural; uno desconocido se lee como pendiente.
 	 */
 	public function test_states() {
-		$this->assertSame( array( 'pending', 'in_progress', 'attended' ), array_keys( Vocabulary::states() ) );
+		$this->assertSame( array( 'pending', 'in_progress', 'attended', 'withdrawn' ), array_keys( Vocabulary::states() ) );
+		$this->assertSame( 'No realizadas', Vocabulary::state_plural( 'withdrawn' ) );
 		$this->assertSame( 'En atención', Vocabulary::state_label( 'in_progress' ) );
 		$this->assertSame( 'Pendiente', Vocabulary::state_label( 'otro' ) );
 		$this->assertSame( 'Atendidas', Vocabulary::state_plural( 'attended' ) );
@@ -186,7 +187,7 @@ class Test_Requests extends WP_UnitTestCase {
 		$this->assertEqualsCanonicalizing( array( 'Equipo de zona Norte', '90000199' ), Zones::from_catalogue() );
 		$this->assertSame( array( '90000199', 'Equipo de zona Norte', 'Otra zona' ), Zones::all() );
 
-		$id = Requests::create( $this->user( 'pse_school_head', '90000001' ), 'other' );
+		$id = Requests::create( $this->user( 'pse_school_head', '90000001' ), 'other', 'individual', 'authorized' );
 		$this->assertSame( 'Equipo de zona Norte', Requests::row( get_post( $id ) )['zone'] );
 	}
 
@@ -239,7 +240,7 @@ class Test_Requests extends WP_UnitTestCase {
 	 */
 	public function test_a_request_is_created_with_the_data_of_its_centre() {
 		$head = $this->user( 'pse_school_head', '90000001' );
-		$id   = Requests::create( $head, 'bullying' );
+		$id   = Requests::create( $head, 'bullying', 'individual', 'authorized' );
 
 		$this->assertIsInt( $id );
 		$row = Requests::row( get_post( $id ) );
@@ -250,19 +251,23 @@ class Test_Requests extends WP_UnitTestCase {
 		$this->assertSame( 'Isla 1', $row['island'] );
 		$this->assertSame( 'Zona 1', $row['zone'] );
 		$this->assertSame( 'bullying', $row['subject'] );
+		$this->assertSame( 'individual', $row['scope'] );
+		$this->assertSame( 'authorized', $row['authorization'] );
 		$this->assertSame( 'pending', $row['status'] );
 		$this->assertSame( $row['number'], get_the_title( $id ) );
 
-		$this->assertSame( gmdate( 'Y' ) . '-0002', Requests::row( get_post( Requests::create( $head, 'other' ) ) )['number'] );
+		$this->assertSame( gmdate( 'Y' ) . '-0002', Requests::row( get_post( Requests::create( $head, 'other', 'individual', 'authorized' ) ) )['number'] );
 	}
 
 	/**
-	 * Sin permiso, sin centro o con un asunto que no es de la lista, no se crea.
+	 * Sin permiso, sin centro, o con un asunto, un tipo o una autorización que no son de su lista, no se crea.
 	 */
 	public function test_a_request_needs_permission_centre_and_subject() {
-		$this->assertSame( 'pse_denied', Requests::create( $this->user( 'pse_psychologist' ), 'bullying' )->get_error_code() );
-		$this->assertSame( 'pse_no_centre', Requests::create( $this->user( 'pse_school_head' ), 'bullying' )->get_error_code() );
-		$this->assertSame( 'pse_subject', Requests::create( $this->user( 'pse_school_head', '90000001' ), 'inventado' )->get_error_code() );
+		$this->assertSame( 'pse_denied', Requests::create( $this->user( 'pse_psychologist' ), 'bullying', 'individual', 'authorized' )->get_error_code() );
+		$this->assertSame( 'pse_no_centre', Requests::create( $this->user( 'pse_school_head' ), 'bullying', 'individual', 'authorized' )->get_error_code() );
+		$this->assertSame( 'pse_subject', Requests::create( $this->user( 'pse_school_head', '90000001' ), 'inventado', 'individual', 'authorized' )->get_error_code() );
+		$this->assertSame( 'pse_scope', Requests::create( $this->user( 'pse_school_head', '90000001' ), 'bullying', '', 'authorized' )->get_error_code() );
+		$this->assertSame( 'pse_authorization', Requests::create( $this->user( 'pse_school_head', '90000001' ), 'bullying', 'group', 'no' )->get_error_code() );
 		$this->assertSame( 0, Requests::query()->found_posts );
 	}
 
@@ -278,7 +283,7 @@ class Test_Requests extends WP_UnitTestCase {
 		$coord  = $this->user( 'pse_coordinator' );
 		$admin  = $this->user( 'administrator' );
 		$nobody = $this->user( 'subscriber' );
-		$post   = get_post( Requests::create( $head, 'distress' ) );
+		$post   = get_post( Requests::create( $head, 'distress', 'individual', 'authorized' ) );
 
 		$this->assertTrue( Access::can_view( $post, $head ) );
 		$this->assertFalse( Access::can_view( $post, $other ) );
@@ -312,7 +317,7 @@ class Test_Requests extends WP_UnitTestCase {
 	public function test_the_zones_list_lets_a_substitute_attend_without_the_role() {
 		$head = $this->user( 'pse_school_head', '90000001' );
 		$sub  = $this->user( 'subscriber', '', 'sustituta@example.org' );
-		$post = get_post( Requests::create( $head, 'distress' ) );
+		$post = get_post( Requests::create( $head, 'distress', 'individual', 'authorized' ) );
 
 		$this->assertFalse( user_can( $sub, Access::CAP_ATTEND ) );
 		$this->assertFalse( Access::can_view( $post, $sub ) );
@@ -335,9 +340,9 @@ class Test_Requests extends WP_UnitTestCase {
 	public function test_requests_are_queried_by_scope_and_filters() {
 		$north = $this->user( 'pse_school_head', '90000001' );
 		$coast = $this->user( 'pse_school_head', '90000006' );
-		$a     = Requests::create( $north, 'bullying' );
-		$b     = Requests::create( $north, 'distress' );
-		$c     = Requests::create( $coast, 'bullying' );
+		$a     = Requests::create( $north, 'bullying', 'individual', 'authorized' );
+		$b     = Requests::create( $north, 'distress', 'individual', 'authorized' );
+		$c     = Requests::create( $coast, 'bullying', 'individual', 'authorized' );
 		update_post_meta( $b, Requests::STATUS, 'attended' );
 
 		$ids = static fn( array $args ) => wp_list_pluck( Requests::query( $args )->posts, 'ID' );
@@ -361,9 +366,9 @@ class Test_Requests extends WP_UnitTestCase {
 	 */
 	public function test_stats_count_by_each_dimension() {
 		$north = $this->user( 'pse_school_head', '90000001' );
-		Requests::create( $north, 'bullying' );
-		Requests::create( $north, 'bullying' );
-		$c = Requests::create( $this->user( 'pse_school_head', '90000006' ), 'distress' );
+		Requests::create( $north, 'bullying', 'individual', 'authorized' );
+		Requests::create( $north, 'bullying', 'individual', 'authorized' );
+		$c = Requests::create( $this->user( 'pse_school_head', '90000006' ), 'distress', 'group', 'authorized' );
 		update_post_meta( $c, Requests::STATUS, 'attended' );
 		update_post_meta( $c, Requests::ZONE, '' );
 
@@ -374,8 +379,16 @@ class Test_Requests extends WP_UnitTestCase {
 				'pending'     => 2,
 				'in_progress' => 0,
 				'attended'    => 1,
+				'withdrawn'   => 0,
 			),
 			$stats['status']
+		);
+		$this->assertSame(
+			array(
+				'individual' => 2,
+				'group'      => 1,
+			),
+			$stats['scope']
 		);
 		$this->assertSame(
 			array(
@@ -399,7 +412,7 @@ class Test_Requests extends WP_UnitTestCase {
 	 * El aviso va a quien atiende la zona y no dice el asunto.
 	 */
 	public function test_the_notice_goes_to_the_zone_without_the_subject() {
-		$id   = Requests::create( $this->user( 'pse_school_head', '90000001' ), 'suicidal_behaviour' );
+		$id   = Requests::create( $this->user( 'pse_school_head', '90000001' ), 'suicidal_behaviour', 'individual', 'authorized' );
 		$sent = tests_retrieve_phpmailer_instance()->get_sent();
 
 		$this->assertNotFalse( $sent, 'crear la solicitud envía el aviso' );
@@ -421,7 +434,7 @@ class Test_Requests extends WP_UnitTestCase {
 		Zones::save( array( '90000001' => 'Zona 1' ), array() );
 		reset_phpmailer_instance();
 
-		$id = Requests::create( $this->user( 'pse_school_head', '90000001' ), 'other' );
+		$id = Requests::create( $this->user( 'pse_school_head', '90000001' ), 'other', 'individual', 'authorized' );
 
 		$this->assertFalse( tests_retrieve_phpmailer_instance()->get_sent() );
 		$this->assertFalse( Mailer::notify( $id ) );

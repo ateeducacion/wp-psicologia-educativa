@@ -361,10 +361,12 @@ final class Screen {
 	 */
 	public static function notice(): string {
 		$texts = array(
-			'saved'   => array( 'success', 'Guardado.' ),
-			'denied'  => array( 'danger', 'No tiene permiso para hacer eso.' ),
-			'subject' => array( 'warning', 'Elija un asunto de la lista.' ),
-			'centre'  => array( 'warning', 'Su cuenta no tiene un centro asignado: no puede solicitar una intervención.' ),
+			'saved'         => array( 'success', 'Guardado.' ),
+			'denied'        => array( 'danger', 'No tiene permiso para hacer eso.' ),
+			'subject'       => array( 'warning', 'Elija un asunto de la lista.' ),
+			'scope'         => array( 'warning', 'Indique si la intervención es individual o grupal.' ),
+			'authorization' => array( 'warning', 'Indique si cuenta con la autorización.' ),
+			'centre'        => array( 'warning', 'Su cuenta no tiene un centro asignado: no puede solicitar una intervención.' ),
 		);
 		$key   = sanitize_key( self::arg( self::ARG_NOTICE ) );
 		return isset( $texts[ $key ] ) ? '<div class="alert alert-' . esc_attr( $texts[ $key ][0] ) . '" role="status">' . esc_html( $texts[ $key ][1] ) . '</div>' : '';

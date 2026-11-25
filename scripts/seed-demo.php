@@ -140,6 +140,9 @@ if ( ! Requests::query( array( 'per_page' => 1 ) )->found_posts ) {
 		} elseif ( $pse_days < 21 ) {
 			$pse_status = Vocabulary::STATUS_IN_PROGRESS;
 		}
+		if ( 0 === $pse_i % 11 ) {
+			$pse_status = Vocabulary::STATUS_WITHDRAWN;
+		}
 		$pse_date   = gmdate( 'Y-m-d 09:00:00', time() - $pse_days * DAY_IN_SECONDS );
 		$pse_number = Requests::next_number( (int) substr( $pse_date, 0, 4 ) );
 		wp_insert_post(
@@ -150,14 +153,16 @@ if ( ! Requests::query( array( 'per_page' => 1 ) )->found_posts ) {
 				'post_author' => $pse_head,
 				'post_date'   => $pse_date,
 				'meta_input'  => array(
-					Requests::NUMBER       => $pse_number,
-					Requests::CENTRE_CODE  => $pse_code,
-					Requests::CENTRE_NAME  => $pse_centre[0],
-					Requests::MUNICIPALITY => $pse_centre[1],
-					Requests::ISLAND       => $pse_centre[2],
-					Requests::ZONE         => $pse_centre[3],
-					Requests::SUBJECT      => $pse_subjects[ ( $pse_i * 2 + intdiv( $pse_i, 5 ) ) % count( $pse_subjects ) ],
-					Requests::STATUS       => $pse_status,
+					Requests::NUMBER        => $pse_number,
+					Requests::CENTRE_CODE   => $pse_code,
+					Requests::CENTRE_NAME   => $pse_centre[0],
+					Requests::MUNICIPALITY  => $pse_centre[1],
+					Requests::ISLAND        => $pse_centre[2],
+					Requests::ZONE          => $pse_centre[3],
+					Requests::SUBJECT       => $pse_subjects[ ( $pse_i * 2 + intdiv( $pse_i, 5 ) ) % count( $pse_subjects ) ],
+					Requests::SCOPE         => 0 === $pse_i % 4 ? 'group' : 'individual',
+					Requests::AUTHORIZATION => 0 === $pse_i % 6 ? 'not_required' : 'authorized',
+					Requests::STATUS        => $pse_status,
 				),
 			)
 		);

@@ -43,12 +43,14 @@ if ( \defined( 'PSE_BUNDLE_LOADED' ) ) {
 
 
 
+
 if ( ! class_exists( 'Pse\Domain\Vocabulary', false ) ) {
 final class Vocabulary {
 
 	public const STATUS_PENDING     = 'pending';
 	public const STATUS_IN_PROGRESS = 'in_progress';
 	public const STATUS_ATTENDED    = 'attended';
+	public const STATUS_WITHDRAWN   = 'withdrawn';
 
 
 
@@ -59,9 +61,9 @@ final class Vocabulary {
 		$default = array(
 			'suicidal_behaviour' => 'Conducta suicida o autolesiva',
 			'bullying'           => 'Acoso o ciberacoso escolar',
-			'gender'             => 'Violencia de género o identidad de género',
+			'gender_violence'    => 'Violencia de género',
+			'gender_identity'    => 'Identidad de género',
 			'distress'           => 'Malestar emocional',
-			'group'              => 'Intervención grupal o preventiva',
 			'advice'             => 'Asesoramiento al profesorado o a las familias',
 			'other'              => 'Otro asunto',
 		);
@@ -98,11 +100,69 @@ final class Vocabulary {
 
 
 
+	public static function scopes(): array {
+		return array(
+			'individual' => 'Individual',
+			'group'      => 'Grupal',
+		);
+	}
+
+
+
+
+
+
+
+
+	public static function authorizations(): array {
+		return array(
+			'authorized'   => 'Tiene autorización (menor de edad)',
+			'not_required' => 'No precisa autorización (mayor de edad)',
+		);
+	}
+
+
+
+
+
+
+	public static function authorization_statement(): string {
+		$default = 'Al enviar la solicitud, la dirección del centro declara bajo su responsabilidad que lo indicado sobre la autorización es cierto, y que el centro custodia la autorización y la aportará si se le requiere.';
+
+
+
+
+
+
+		$statement = trim( (string) apply_filters( 'pse_authorization_statement', $default ) );
+		return '' !== $statement ? $statement : $default;
+	}
+
+
+
+
+
+
+
+
+	public static function label_in( array $labels, string $value ): string {
+		if ( '' === $value ) {
+			return '—';
+		}
+		return $labels[ $value ] ?? $value;
+	}
+
+
+
+
+
+
 	public static function states(): array {
 		return array(
 			self::STATUS_PENDING     => 'Pendiente',
 			self::STATUS_IN_PROGRESS => 'En atención',
 			self::STATUS_ATTENDED    => 'Atendida',
+			self::STATUS_WITHDRAWN   => 'No realizada',
 		);
 	}
 
@@ -127,6 +187,7 @@ final class Vocabulary {
 			self::STATUS_PENDING     => 'Pendientes',
 			self::STATUS_IN_PROGRESS => 'En atención',
 			self::STATUS_ATTENDED    => 'Atendidas',
+			self::STATUS_WITHDRAWN   => 'No realizadas',
 		);
 		return $plural[ $slug ] ?? '';
 	}
@@ -160,20 +221,22 @@ final class Stats {
 			'total'        => count( $rows ),
 			'status'       => array_fill_keys( array_keys( Vocabulary::states() ), 0 ),
 			'subject'      => array(),
+			'scope'        => array(),
 			'municipality' => array(),
 			'island'       => array(),
 			'zone'         => array(),
 			'month'        => array(),
 		);
 		foreach ( $rows as $row ) {
-			foreach ( array( 'status', 'subject', 'municipality', 'island', 'zone' ) as $dimension ) {
-				$value                       = '' !== (string) $row[ $dimension ] ? (string) $row[ $dimension ] : '—';
+			foreach ( array( 'status', 'subject', 'scope', 'municipality', 'island', 'zone' ) as $dimension ) {
+				$value                       = (string) ( $row[ $dimension ] ?? '' );
+				$value                       = '' !== $value ? $value : '—';
 				$out[ $dimension ][ $value ] = ( $out[ $dimension ][ $value ] ?? 0 ) + 1;
 			}
 			$month                  = substr( (string) $row['date'], 0, 7 );
 			$out['month'][ $month ] = ( $out['month'][ $month ] ?? 0 ) + 1;
 		}
-		foreach ( array( 'subject', 'municipality', 'island', 'zone' ) as $dimension ) {
+		foreach ( array( 'subject', 'scope', 'municipality', 'island', 'zone' ) as $dimension ) {
 			arsort( $out[ $dimension ] );
 		}
 		ksort( $out['month'] );
@@ -1448,19 +1511,22 @@ use Pse\Domain\Vocabulary;
 
 
 
+
 if ( ! class_exists( 'Pse\PostType\Requests', false ) ) {
 final class Requests {
 
 	public const TYPE = 'pse_request';
 
-	public const NUMBER       = 'pse_number';
-	public const CENTRE_CODE  = 'pse_centre_code';
-	public const CENTRE_NAME  = 'pse_centre_name';
-	public const MUNICIPALITY = 'pse_municipality';
-	public const ISLAND       = 'pse_island';
-	public const ZONE         = 'pse_zone';
-	public const SUBJECT      = 'pse_subject';
-	public const STATUS       = 'pse_status';
+	public const NUMBER        = 'pse_number';
+	public const CENTRE_CODE   = 'pse_centre_code';
+	public const CENTRE_NAME   = 'pse_centre_name';
+	public const MUNICIPALITY  = 'pse_municipality';
+	public const ISLAND        = 'pse_island';
+	public const ZONE          = 'pse_zone';
+	public const SUBJECT       = 'pse_subject';
+	public const STATUS        = 'pse_status';
+	public const SCOPE         = 'pse_scope';
+	public const AUTHORIZATION = 'pse_authorization';
 
 	public const OPTION_SEQUENCE = 'pse_sequence';
 
@@ -1472,7 +1538,7 @@ final class Requests {
 
 
 	public static function keys(): array {
-		return array( self::NUMBER, self::CENTRE_CODE, self::CENTRE_NAME, self::MUNICIPALITY, self::ISLAND, self::ZONE, self::SUBJECT, self::STATUS );
+		return array( self::NUMBER, self::CENTRE_CODE, self::CENTRE_NAME, self::MUNICIPALITY, self::ISLAND, self::ZONE, self::SUBJECT, self::SCOPE, self::AUTHORIZATION, self::STATUS );
 	}
 
 
@@ -1554,7 +1620,9 @@ final class Requests {
 
 
 
-	public static function create( int $user_id, string $subject ) {
+
+
+	public static function create( int $user_id, string $subject, string $scope, string $authorization ) {
 		if ( ! user_can( $user_id, Access::CAP_REQUEST ) ) {
 			return new \WP_Error( 'pse_denied', 'No tiene permiso para solicitar una intervención.' );
 		}
@@ -1565,6 +1633,12 @@ final class Requests {
 		if ( ! isset( Vocabulary::subjects()[ $subject ] ) ) {
 			return new \WP_Error( 'pse_subject', 'Elija un asunto de la lista.' );
 		}
+		if ( ! isset( Vocabulary::scopes()[ $scope ] ) ) {
+			return new \WP_Error( 'pse_scope', 'Indique si la intervención es individual o grupal.' );
+		}
+		if ( ! isset( Vocabulary::authorizations()[ $authorization ] ) ) {
+			return new \WP_Error( 'pse_authorization', 'Indique si cuenta con la autorización.' );
+		}
 		$centre = CentreCatalogue::find( $code );
 		$number = self::next_number( (int) current_time( 'Y' ) );
 		$id     = wp_insert_post(
@@ -1574,14 +1648,16 @@ final class Requests {
 				'post_title'  => $number,
 				'post_author' => $user_id,
 				'meta_input'  => array(
-					self::NUMBER       => $number,
-					self::CENTRE_CODE  => $code,
-					self::CENTRE_NAME  => (string) ( $centre['name'] ?? '' ),
-					self::MUNICIPALITY => (string) ( $centre['municipality'] ?? '' ),
-					self::ISLAND       => (string) ( $centre['island'] ?? '' ),
-					self::ZONE         => Zones::of_centre( $code ),
-					self::SUBJECT      => $subject,
-					self::STATUS       => Vocabulary::STATUS_PENDING,
+					self::NUMBER        => $number,
+					self::CENTRE_CODE   => $code,
+					self::CENTRE_NAME   => (string) ( $centre['name'] ?? '' ),
+					self::MUNICIPALITY  => (string) ( $centre['municipality'] ?? '' ),
+					self::ISLAND        => (string) ( $centre['island'] ?? '' ),
+					self::ZONE          => Zones::of_centre( $code ),
+					self::SUBJECT       => $subject,
+					self::SCOPE         => $scope,
+					self::AUTHORIZATION => $authorization,
+					self::STATUS        => Vocabulary::STATUS_PENDING,
 				),
 			),
 			true
@@ -1625,16 +1701,18 @@ final class Requests {
 	public static function row( \WP_Post $post ): array {
 		$status = (string) get_post_meta( $post->ID, self::STATUS, true );
 		return array(
-			'id'           => (int) $post->ID,
-			'number'       => (string) get_post_meta( $post->ID, self::NUMBER, true ),
-			'date'         => (string) mysql2date( 'Y-m-d', $post->post_date ),
-			'centre_code'  => (string) get_post_meta( $post->ID, self::CENTRE_CODE, true ),
-			'centre_name'  => (string) get_post_meta( $post->ID, self::CENTRE_NAME, true ),
-			'municipality' => (string) get_post_meta( $post->ID, self::MUNICIPALITY, true ),
-			'island'       => (string) get_post_meta( $post->ID, self::ISLAND, true ),
-			'zone'         => (string) get_post_meta( $post->ID, self::ZONE, true ),
-			'subject'      => (string) get_post_meta( $post->ID, self::SUBJECT, true ),
-			'status'       => isset( Vocabulary::states()[ $status ] ) ? $status : Vocabulary::STATUS_PENDING,
+			'id'            => (int) $post->ID,
+			'number'        => (string) get_post_meta( $post->ID, self::NUMBER, true ),
+			'date'          => (string) mysql2date( 'Y-m-d', $post->post_date ),
+			'centre_code'   => (string) get_post_meta( $post->ID, self::CENTRE_CODE, true ),
+			'centre_name'   => (string) get_post_meta( $post->ID, self::CENTRE_NAME, true ),
+			'municipality'  => (string) get_post_meta( $post->ID, self::MUNICIPALITY, true ),
+			'island'        => (string) get_post_meta( $post->ID, self::ISLAND, true ),
+			'zone'          => (string) get_post_meta( $post->ID, self::ZONE, true ),
+			'subject'       => (string) get_post_meta( $post->ID, self::SUBJECT, true ),
+			'scope'         => (string) get_post_meta( $post->ID, self::SCOPE, true ),
+			'authorization' => (string) get_post_meta( $post->ID, self::AUTHORIZATION, true ),
+			'status'        => isset( Vocabulary::states()[ $status ] ) ? $status : Vocabulary::STATUS_PENDING,
 		);
 	}
 
@@ -1666,6 +1744,7 @@ final class Requests {
 		$filters = array(
 			'status'       => self::STATUS,
 			'subject'      => self::SUBJECT,
+			'scope'        => self::SCOPE,
 			'zone'         => self::ZONE,
 			'municipality' => self::MUNICIPALITY,
 		);
@@ -1932,11 +2011,13 @@ final class Actions {
 
 
 	private static function create(): string {
-		$id = Requests::create( get_current_user_id(), sanitize_key( self::posted( 'pse_subject' ) ) );
+		$id = Requests::create( get_current_user_id(), sanitize_key( self::posted( 'pse_subject' ) ), sanitize_key( self::posted( 'pse_scope' ) ), sanitize_key( self::posted( 'pse_authorization' ) ) );
 		if ( is_wp_error( $id ) ) {
 			$notices = array(
-				'pse_subject'   => 'subject',
-				'pse_no_centre' => 'centre',
+				'pse_subject'       => 'subject',
+				'pse_scope'         => 'scope',
+				'pse_authorization' => 'authorization',
+				'pse_no_centre'     => 'centre',
 			);
 			return Screen::url(
 				array(
@@ -2081,15 +2162,37 @@ final class Views {
 		foreach ( Vocabulary::subjects() as $slug => $label ) {
 			$body .= '<option value="' . esc_attr( $slug ) . '">' . esc_html( $label ) . '</option>';
 		}
-		$body .= '</select><p class="form-text mb-0">Lista cerrada: no hay ningún campo de texto libre.</p></div>';
+		$body .= '</select><p class="form-text">Lista cerrada: no hay ningún campo de texto libre. Si encaja en más de un asunto, elija el primero de la lista.</p>';
+		$body .= self::radios( 'scope', 'Tipo de intervención', Vocabulary::scopes() ) . '</div>';
+
+		$body .= '<div class="pse-card"><h2>Autorización</h2>';
+		$body .= self::radios( 'authorization', 'Autorización de la familia o de quien ejerce la tutela', Vocabulary::authorizations() );
+		$body .= '<p class="form-text mb-0">' . esc_html( Vocabulary::authorization_statement() ) . '</p></div>';
 		$body .= '<button class="btn btn-primary pse-btn" type="submit">Enviar solicitud</button></form>';
 
 		return array(
 			'tab'      => 'new',
 			'title'    => Screen::TITLES['new'],
-			'subtitle' => 'Indique solo el asunto. El profesional de psicología educativa de su zona se pondrá en contacto con el centro.',
+			'subtitle' => 'Indique el asunto, el tipo y la autorización. El profesional de psicología educativa de su zona se pondrá en contacto con el centro.',
 			'body'     => $body,
 		);
+	}
+
+
+
+
+
+
+
+
+
+	private static function radios( string $name, string $legend, array $options ): string {
+		$out = '<fieldset class="mt-3"><legend class="form-label">' . esc_html( $legend ) . ' <span class="text-danger" aria-hidden="true">*</span></legend>';
+		foreach ( $options as $slug => $label ) {
+			$id   = 'pse-' . $name . '-' . $slug;
+			$out .= '<div class="form-check"><input class="form-check-input" type="radio" id="' . esc_attr( $id ) . '" name="' . esc_attr( 'pse_' . $name ) . '" value="' . esc_attr( $slug ) . '" required><label class="form-check-label" for="' . esc_attr( $id ) . '">' . esc_html( $label ) . '</label></div>';
+		}
+		return $out . '</fieldset>';
 	}
 
 
@@ -2120,7 +2223,7 @@ final class Views {
 	private static function chips( string $tab, array $scope, string $current ): string {
 		unset( $scope['status'], $scope['paged'] );
 		$keep = array( Screen::ARG_TAB => $tab );
-		foreach ( array( 'subject', 'zone', 'municipality', 'search' ) as $name ) {
+		foreach ( array( 'subject', 'scope', 'zone', 'municipality', 'search' ) as $name ) {
 			$keep[ 'pse_f_' . $name ] = (string) ( $scope[ $name ] ?? '' );
 		}
 		$states = array( '' => 'Todas' );
@@ -2146,14 +2249,16 @@ final class Views {
 
 	private static function table( array $posts, array $columns, string $back = '' ): string {
 		$heads = array(
-			'number'       => 'N.º',
-			'date'         => 'Fecha',
-			'centre'       => 'Centro',
-			'municipality' => 'Municipio',
-			'zone'         => 'Zona',
-			'subject'      => 'Asunto',
-			'status'       => 'Estado',
-			'change'       => 'Cambiar estado',
+			'number'        => 'N.º',
+			'date'          => 'Fecha',
+			'centre'        => 'Centro',
+			'municipality'  => 'Municipio',
+			'zone'          => 'Zona',
+			'subject'       => 'Asunto',
+			'scope'         => 'Tipo',
+			'authorization' => 'Autorización',
+			'status'        => 'Estado',
+			'change'        => 'Cambiar estado',
 		);
 		if ( ! $posts ) {
 			return '<p class="pse-empty">No hay solicitudes que mostrar.</p>';
@@ -2166,14 +2271,16 @@ final class Views {
 		foreach ( $posts as $post ) {
 			$row   = Requests::row( $post );
 			$cells = array(
-				'number'       => '<strong>' . esc_html( $row['number'] ) . '</strong>',
-				'date'         => esc_html( mysql2date( 'd/m/Y', $post->post_date ) ),
-				'centre'       => esc_html( $row['centre_name'] ) . ' <small class="text-secondary">' . esc_html( $row['centre_code'] ) . '</small>',
-				'municipality' => esc_html( $row['municipality'] ),
-				'zone'         => esc_html( $row['zone'] ),
-				'subject'      => esc_html( Vocabulary::subject_label( $row['subject'] ) ),
-				'status'       => self::badge( $row['status'] ),
-				'change'       => in_array( 'change', $columns, true ) ? self::status_form( $post, $row, $back ) : '',
+				'number'        => '<strong>' . esc_html( $row['number'] ) . '</strong>',
+				'date'          => esc_html( mysql2date( 'd/m/Y', $post->post_date ) ),
+				'centre'        => esc_html( $row['centre_name'] ) . ' <small class="text-secondary">' . esc_html( $row['centre_code'] ) . '</small>',
+				'municipality'  => esc_html( $row['municipality'] ),
+				'zone'          => esc_html( $row['zone'] ),
+				'subject'       => esc_html( Vocabulary::subject_label( $row['subject'] ) ),
+				'scope'         => esc_html( Vocabulary::label_in( Vocabulary::scopes(), $row['scope'] ) ),
+				'authorization' => esc_html( Vocabulary::label_in( Vocabulary::authorizations(), $row['authorization'] ) ),
+				'status'        => self::badge( $row['status'] ),
+				'change'        => in_array( 'change', $columns, true ) ? self::status_form( $post, $row, $back ) : '',
 			);
 			$out  .= '<tr>';
 			foreach ( $columns as $column ) {
@@ -2246,7 +2353,7 @@ final class Views {
 			$told  = Zones::emails( $row['zone'] ) ? 'Se ha avisado por correo al profesional de su zona, que se pondrá en contacto con el centro.' : 'Queda registrada y a la vista de la coordinación.';
 			$body .= '<div class="alert alert-success" role="status"><strong>' . esc_html( 'Solicitud n.º ' . $row['number'] . ' registrada.' ) . '</strong> ' . esc_html( $told ) . '</div>';
 		}
-		$body .= self::table( $query->posts, array( 'number', 'date', 'subject', 'status' ) );
+		$body .= self::table( $query->posts, array( 'number', 'date', 'subject', 'scope', 'status' ) );
 		$body .= self::pagination( $query, array( Screen::ARG_TAB => 'centre' ) );
 		$body .= '<p class="pse-note">Solo se muestran las solicitudes de su centro.</p>';
 		return array(
@@ -2274,7 +2381,7 @@ final class Views {
 			$body .= '<div class="alert alert-warning">Su correo no figura en ninguna zona todavía. La coordinación asigna las zonas en «Zonas».</div>';
 		}
 		$body .= self::chips( 'zone', $scope, $status );
-		$body .= self::table( $query->posts, array( 'number', 'date', 'centre', 'municipality', 'subject', 'status', 'change' ), $status );
+		$body .= self::table( $query->posts, array( 'number', 'date', 'centre', 'municipality', 'subject', 'scope', 'authorization', 'status', 'change' ), $status );
 		$body .= self::pagination(
 			$query,
 			array(
@@ -2314,7 +2421,7 @@ final class Views {
 
 
 	private static function all_list(): array {
-		$filters = self::filters( array( 'status', 'subject', 'zone', 'municipality', 'search' ) );
+		$filters = self::filters( array( 'status', 'subject', 'scope', 'zone', 'municipality', 'search' ) );
 		$query   = Requests::query( $filters + array( 'paged' => absint( Screen::arg( 'pse_p' ) ) ) );
 		$args    = array( Screen::ARG_TAB => 'all' );
 		foreach ( $filters as $name => $value ) {
@@ -2331,10 +2438,11 @@ final class Views {
 		$body .= self::select( 'municipality', 'Todos los municipios', array_combine( $municipalities, $municipalities ), (string) ( $filters['municipality'] ?? '' ) );
 		$body .= self::select( 'zone', 'Todas las zonas', array_combine( $zones, $zones ), (string) ( $filters['zone'] ?? '' ) );
 		$body .= self::select( 'subject', 'Todos los asuntos', Vocabulary::subjects(), (string) ( $filters['subject'] ?? '' ) );
+		$body .= self::select( 'scope', 'Todos los tipos', Vocabulary::scopes(), (string) ( $filters['scope'] ?? '' ) );
 		$body .= '<button class="btn btn-outline-primary" type="submit">Filtrar</button></form>';
 
 		$body .= self::chips( 'all', $filters, (string) ( $filters['status'] ?? '' ) );
-		$body .= self::table( $query->posts, array( 'number', 'date', 'centre', 'municipality', 'zone', 'subject', 'status' ) );
+		$body .= self::table( $query->posts, array( 'number', 'date', 'centre', 'municipality', 'zone', 'subject', 'scope', 'authorization', 'status' ) );
 		$body .= '<div class="pse-list-foot">' . self::pagination( $query, $args );
 		$body .= '<a class="btn btn-primary pse-btn ms-auto" href="' . esc_url( Screen::url( $args + array( Screen::ARG_CSV => '1' ) ) ) . '">Exportar resultados como CSV</a></div>';
 		$body .= '<p class="pse-note">La exportación incluye todas las páginas del listado filtrado.</p>';
@@ -2353,9 +2461,9 @@ final class Views {
 
 
 	public static function csv( array $rows ): string {
-		$lines = array( array( 'Número', 'Fecha', 'Código de centro', 'Centro', 'Municipio', 'Isla', 'Zona', 'Asunto', 'Estado' ) );
+		$lines = array( array( 'Número', 'Fecha', 'Código de centro', 'Centro', 'Municipio', 'Isla', 'Zona', 'Asunto', 'Estado', 'Tipo', 'Autorización' ) );
 		foreach ( $rows as $row ) {
-			$lines[] = array( $row['number'], $row['date'], $row['centre_code'], $row['centre_name'], $row['municipality'], $row['island'], $row['zone'], Vocabulary::subject_label( (string) $row['subject'] ), Vocabulary::state_label( (string) $row['status'] ) );
+			$lines[] = array( $row['number'], $row['date'], $row['centre_code'], $row['centre_name'], $row['municipality'], $row['island'], $row['zone'], Vocabulary::subject_label( (string) $row['subject'] ), Vocabulary::state_label( (string) $row['status'] ), Vocabulary::label_in( Vocabulary::scopes(), (string) ( $row['scope'] ?? '' ) ), Vocabulary::label_in( Vocabulary::authorizations(), (string) ( $row['authorization'] ?? '' ) ) );
 		}
 		$out = '';
 		foreach ( $lines as $line ) {
@@ -2379,7 +2487,7 @@ final class Views {
 		if ( ! current_user_can( Access::CAP_OVERSEE ) ) {
 			return;
 		}
-		$csv = self::csv( Requests::rows( self::filters( array( 'status', 'subject', 'zone', 'municipality', 'search' ) ) ) );
+		$csv = self::csv( Requests::rows( self::filters( array( 'status', 'subject', 'scope', 'zone', 'municipality', 'search' ) ) ) );
 		header( 'Content-Type: text/csv; charset=utf-8' );
 		header( 'Content-Disposition: attachment; filename="solicitudes-' . wp_date( 'Y-m-d' ) . '.csv"' );
 
@@ -2427,6 +2535,7 @@ final class Views {
 		$cards = array(
 			'Por mes'       => self::bars( $stats['month'], $months ),
 			'Por asunto'    => self::bars( $stats['subject'], Vocabulary::subjects() ),
+			'Por tipo'      => self::bars( $stats['scope'], Vocabulary::scopes() ),
 			'Por zona'      => self::bars( $stats['zone'] ),
 			'Por municipio' => self::bars( $stats['municipality'] ),
 			'Por isla'      => self::bars( $stats['island'] ),
@@ -2438,7 +2547,7 @@ final class Views {
 		return array(
 			'tab'      => 'stats',
 			'title'    => Screen::TITLES['stats'],
-			'subtitle' => 'Número de solicitudes por mes, asunto, zona, municipio e isla.',
+			'subtitle' => 'Número de solicitudes por mes, asunto, tipo, zona, municipio e isla.',
 			'body'     => $body,
 		);
 	}
@@ -2835,10 +2944,12 @@ final class Screen {
 
 	public static function notice(): string {
 		$texts = array(
-			'saved'   => array( 'success', 'Guardado.' ),
-			'denied'  => array( 'danger', 'No tiene permiso para hacer eso.' ),
-			'subject' => array( 'warning', 'Elija un asunto de la lista.' ),
-			'centre'  => array( 'warning', 'Su cuenta no tiene un centro asignado: no puede solicitar una intervención.' ),
+			'saved'         => array( 'success', 'Guardado.' ),
+			'denied'        => array( 'danger', 'No tiene permiso para hacer eso.' ),
+			'subject'       => array( 'warning', 'Elija un asunto de la lista.' ),
+			'scope'         => array( 'warning', 'Indique si la intervención es individual o grupal.' ),
+			'authorization' => array( 'warning', 'Indique si cuenta con la autorización.' ),
+			'centre'        => array( 'warning', 'Su cuenta no tiene un centro asignado: no puede solicitar una intervención.' ),
 		);
 		$key   = sanitize_key( self::arg( self::ARG_NOTICE ) );
 		return isset( $texts[ $key ] ) ? '<div class="alert alert-' . esc_attr( $texts[ $key ][0] ) . '" role="status">' . esc_html( $texts[ $key ][1] ) . '</div>' : '';
@@ -3010,11 +3121,13 @@ final class App {
 .pse-state-pending { background: var(--pse-wait-cont); color: var(--pse-wait); }
 .pse-state-in_progress { background: var(--pse-brand-cont); color: var(--pse-brand); }
 .pse-state-attended { background: var(--pse-ok-cont); color: var(--pse-ok); }
+.pse-state-withdrawn { background: var(--pse-sup-2); color: var(--pse-text-2); }
 
 /* Listados */
 .pse-table { background: #fff; font-size: 14px; margin: 0; }
 .pse-table th { font-size: 12.5px; color: var(--pse-text-2); font-weight: 600; white-space: nowrap; }
 .pse-table td, .pse-table th { padding: 12px 10px; vertical-align: middle; }
+.pse-table td:first-child { white-space: nowrap; }
 .pse-status-form { display: flex; gap: 6px; align-items: center; }
 .pse-status-form .form-select { width: auto; }
 .pse-list-foot { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 18px; }
