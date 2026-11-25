@@ -13,8 +13,9 @@ use Pse\Centre\Zones;
 use Pse\Domain\Vocabulary;
 
 /**
- * Una solicitud es una entrada con siete datos y ninguno es de una persona
- * atendida (ADR-0003): número, centro, municipio, isla, zona, asunto y estado.
+ * Una solicitud es una entrada con nueve datos y ninguno es de una persona
+ * atendida (ADR-0003): número, centro, municipio, isla, zona, asunto, tipo,
+ * autorización y estado (ADR-0009).
  * El centro, el municipio y la zona se copian al crearla, para que la
  * estadística no cambie si luego cambia el catálogo o el reparto de zonas.
  */
@@ -22,14 +23,16 @@ final class Requests {
 
 	public const TYPE = 'pse_request';
 
-	public const NUMBER       = 'pse_number';
-	public const CENTRE_CODE  = 'pse_centre_code';
-	public const CENTRE_NAME  = 'pse_centre_name';
-	public const MUNICIPALITY = 'pse_municipality';
-	public const ISLAND       = 'pse_island';
-	public const ZONE         = 'pse_zone';
-	public const SUBJECT      = 'pse_subject';
-	public const STATUS       = 'pse_status';
+	public const NUMBER        = 'pse_number';
+	public const CENTRE_CODE   = 'pse_centre_code';
+	public const CENTRE_NAME   = 'pse_centre_name';
+	public const MUNICIPALITY  = 'pse_municipality';
+	public const ISLAND        = 'pse_island';
+	public const ZONE          = 'pse_zone';
+	public const SUBJECT       = 'pse_subject';
+	public const STATUS        = 'pse_status';
+	public const SCOPE         = 'pse_scope';
+	public const AUTHORIZATION = 'pse_authorization';
 
 	public const OPTION_SEQUENCE = 'pse_sequence';
 
@@ -41,7 +44,7 @@ final class Requests {
 	 * @return string[]
 	 */
 	public static function keys(): array {
-		return array( self::NUMBER, self::CENTRE_CODE, self::CENTRE_NAME, self::MUNICIPALITY, self::ISLAND, self::ZONE, self::SUBJECT, self::STATUS );
+		return array( self::NUMBER, self::CENTRE_CODE, self::CENTRE_NAME, self::MUNICIPALITY, self::ISLAND, self::ZONE, self::SUBJECT, self::SCOPE, self::AUTHORIZATION, self::STATUS );
 	}
 
 	/**
@@ -119,11 +122,13 @@ final class Requests {
 	/**
 	 * Create a request for the centre of a user.
 	 *
-	 * @param int    $user_id User who asks.
-	 * @param string $subject Subject slug.
+	 * @param int    $user_id       User who asks.
+	 * @param string $subject       Subject slug.
+	 * @param string $scope         Scope slug: individual or group.
+	 * @param string $authorization What the centre declares about the authorization.
 	 * @return int|\WP_Error Request ID.
 	 */
-	public static function create( int $user_id, string $subject ) {
+	public static function create( int $user_id, string $subject, string $scope, string $authorization ) {
 		if ( ! user_can( $user_id, Access::CAP_REQUEST ) ) {
 			return new \WP_Error( 'pse_denied', 'No tiene permiso para solicitar una intervención.' );
 		}
@@ -134,6 +139,12 @@ final class Requests {
 		if ( ! isset( Vocabulary::subjects()[ $subject ] ) ) {
 			return new \WP_Error( 'pse_subject', 'Elija un asunto de la lista.' );
 		}
+		if ( ! isset( Vocabulary::scopes()[ $scope ] ) ) {
+			return new \WP_Error( 'pse_scope', 'Indique si la intervención es individual o grupal.' );
+		}
+		if ( ! isset( Vocabulary::authorizations()[ $authorization ] ) ) {
+			return new \WP_Error( 'pse_authorization', 'Indique si cuenta con la autorización.' );
+		}
 		$centre = CentreCatalogue::find( $code );
 		$number = self::next_number( (int) current_time( 'Y' ) );
 		$id     = wp_insert_post(
@@ -143,14 +154,16 @@ final class Requests {
 				'post_title'  => $number,
 				'post_author' => $user_id,
 				'meta_input'  => array(
-					self::NUMBER       => $number,
-					self::CENTRE_CODE  => $code,
-					self::CENTRE_NAME  => (string) ( $centre['name'] ?? '' ),
-					self::MUNICIPALITY => (string) ( $centre['municipality'] ?? '' ),
-					self::ISLAND       => (string) ( $centre['island'] ?? '' ),
-					self::ZONE         => Zones::of_centre( $code ),
-					self::SUBJECT      => $subject,
-					self::STATUS       => Vocabulary::STATUS_PENDING,
+					self::NUMBER        => $number,
+					self::CENTRE_CODE   => $code,
+					self::CENTRE_NAME   => (string) ( $centre['name'] ?? '' ),
+					self::MUNICIPALITY  => (string) ( $centre['municipality'] ?? '' ),
+					self::ISLAND        => (string) ( $centre['island'] ?? '' ),
+					self::ZONE          => Zones::of_centre( $code ),
+					self::SUBJECT       => $subject,
+					self::SCOPE         => $scope,
+					self::AUTHORIZATION => $authorization,
+					self::STATUS        => Vocabulary::STATUS_PENDING,
 				),
 			),
 			true
@@ -189,21 +202,23 @@ final class Requests {
 	 * The fields of a request, ready to print or export.
 	 *
 	 * @param \WP_Post $post Request.
-	 * @return array{id:int, number:string, date:string, centre_code:string, centre_name:string, municipality:string, island:string, zone:string, subject:string, status:string}
+	 * @return array{id:int, number:string, date:string, centre_code:string, centre_name:string, municipality:string, island:string, zone:string, subject:string, scope:string, authorization:string, status:string}
 	 */
 	public static function row( \WP_Post $post ): array {
 		$status = (string) get_post_meta( $post->ID, self::STATUS, true );
 		return array(
-			'id'           => (int) $post->ID,
-			'number'       => (string) get_post_meta( $post->ID, self::NUMBER, true ),
-			'date'         => (string) mysql2date( 'Y-m-d', $post->post_date ),
-			'centre_code'  => (string) get_post_meta( $post->ID, self::CENTRE_CODE, true ),
-			'centre_name'  => (string) get_post_meta( $post->ID, self::CENTRE_NAME, true ),
-			'municipality' => (string) get_post_meta( $post->ID, self::MUNICIPALITY, true ),
-			'island'       => (string) get_post_meta( $post->ID, self::ISLAND, true ),
-			'zone'         => (string) get_post_meta( $post->ID, self::ZONE, true ),
-			'subject'      => (string) get_post_meta( $post->ID, self::SUBJECT, true ),
-			'status'       => isset( Vocabulary::states()[ $status ] ) ? $status : Vocabulary::STATUS_PENDING,
+			'id'            => (int) $post->ID,
+			'number'        => (string) get_post_meta( $post->ID, self::NUMBER, true ),
+			'date'          => (string) mysql2date( 'Y-m-d', $post->post_date ),
+			'centre_code'   => (string) get_post_meta( $post->ID, self::CENTRE_CODE, true ),
+			'centre_name'   => (string) get_post_meta( $post->ID, self::CENTRE_NAME, true ),
+			'municipality'  => (string) get_post_meta( $post->ID, self::MUNICIPALITY, true ),
+			'island'        => (string) get_post_meta( $post->ID, self::ISLAND, true ),
+			'zone'          => (string) get_post_meta( $post->ID, self::ZONE, true ),
+			'subject'       => (string) get_post_meta( $post->ID, self::SUBJECT, true ),
+			'scope'         => (string) get_post_meta( $post->ID, self::SCOPE, true ),
+			'authorization' => (string) get_post_meta( $post->ID, self::AUTHORIZATION, true ),
+			'status'        => isset( Vocabulary::states()[ $status ] ) ? $status : Vocabulary::STATUS_PENDING,
 		);
 	}
 
@@ -214,7 +229,7 @@ final class Requests {
 	 * no el visitante; el resto son los filtros del listado. Un alcance de
 	 * zonas vacío no devuelve nada.
 	 *
-	 * @param array{centre?:string, zones?:string[], status?:string, subject?:string, zone?:string, municipality?:string, search?:string, paged?:int, per_page?:int} $args Scope and filters.
+	 * @param array{centre?:string, zones?:string[], status?:string, subject?:string, scope?:string, zone?:string, municipality?:string, search?:string, paged?:int, per_page?:int} $args Scope and filters.
 	 * @return \WP_Query
 	 */
 	public static function query( array $args = array() ): \WP_Query {
@@ -235,6 +250,7 @@ final class Requests {
 		$filters = array(
 			'status'       => self::STATUS,
 			'subject'      => self::SUBJECT,
+			'scope'        => self::SCOPE,
 			'zone'         => self::ZONE,
 			'municipality' => self::MUNICIPALITY,
 		);

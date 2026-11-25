@@ -68,11 +68,13 @@ final class Actions {
 	 * @return string
 	 */
 	private static function create(): string {
-		$id = Requests::create( get_current_user_id(), sanitize_key( self::posted( 'pse_subject' ) ) );
+		$id = Requests::create( get_current_user_id(), sanitize_key( self::posted( 'pse_subject' ) ), sanitize_key( self::posted( 'pse_scope' ) ), sanitize_key( self::posted( 'pse_authorization' ) ) );
 		if ( is_wp_error( $id ) ) {
 			$notices = array(
-				'pse_subject'   => 'subject',
-				'pse_no_centre' => 'centre',
+				'pse_subject'       => 'subject',
+				'pse_scope'         => 'scope',
+				'pse_authorization' => 'authorization',
+				'pse_no_centre'     => 'centre',
 			);
 			return Screen::url(
 				array(

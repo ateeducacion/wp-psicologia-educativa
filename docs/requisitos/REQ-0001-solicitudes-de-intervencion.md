@@ -7,7 +7,7 @@ related:
   issues: []
   prs: []
   sdds: []
-  adrs: [ADR-0003, ADR-0004, ADR-0005, ADR-0006]
+  adrs: [ADR-0003, ADR-0004, ADR-0005, ADR-0006, ADR-0009]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -35,25 +35,28 @@ estado están. El aplicativo quita el reenvío y deja el registro.
 ## Requisitos
 
 1. **Solicitar.** La dirección entra con su cuenta. El centro y la fecha los
-   pone el aplicativo. Solo elige un asunto de una lista cerrada. Puede hacer
-   varias solicitudes.
+   pone el aplicativo. Elige un asunto de una lista cerrada, ordenada por
+   prioridad, si la intervención es individual o grupal, y declara si cuenta
+   con la autorización o si no la precisa porque es mayor de edad (ADR-0009).
+   Puede hacer varias solicitudes.
 2. **Sin datos del alumnado.** Ni nombre, ni identificador, ni descripción
    del caso: no hay ningún campo de texto libre (ADR-0003).
 3. **Número.** Cada solicitud recibe un número correlativo por año.
 4. **Reparto por zona.** La solicitud va a la zona del centro, y se avisa por
    correo a quien la atiende, sin el asunto (ADR-0004, ADR-0006).
 5. **Atender.** El profesional ve solo las solicitudes de sus zonas y solo
-   cambia su estado: pendiente, en atención o atendida.
-6. **Seguir.** La coordinación ve todas, las filtra por estado, asunto, zona
+   cambia su estado: pendiente, en atención, atendida o no realizada.
+6. **Seguir.** La coordinación ve todas, las filtra por estado, asunto, tipo, zona
    y municipio, y las exporta en CSV.
-7. **Contar.** Una pantalla de estadísticas: por mes, asunto, zona, municipio
-   e isla.
+7. **Contar.** Una pantalla de estadísticas: por mes, asunto, tipo, zona,
+   municipio e isla.
 8. **Zonas.** La coordinación mantiene qué centros tiene cada zona y quién la
    atiende.
 
 ## Fuera del alcance
 
-- La información del caso, sus antecedentes y las autorizaciones.
+- La información del caso, sus antecedentes y el documento de autorización,
+  que guarda el centro.
 - La comunicación entre el centro y el profesional.
 - Agenda, citas y registro de las intervenciones.
 
@@ -61,4 +64,7 @@ estado están. El aplicativo quita el reenvío y deja el registro.
 
 - La lista definitiva de asuntos.
 - La relación de centros por zona y el correo de cada profesional.
-- Si los tres estados son los que se quieren.
+- El nombre definitivo del estado «No realizada».
+- El texto legal de la declaración de autorización (filtro
+  `pse_authorization_statement`).
+- Las solicitudes registradas antes del aplicativo, si se cargan.

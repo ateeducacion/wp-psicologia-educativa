@@ -69,3 +69,11 @@ Haremos la opción 3. La solicitud tiene número, centro, municipio, isla, zona,
 
 - El centro, el municipio y la zona se copian en la solicitud al crearla, para que la estadística no cambie si luego cambia el catálogo o el reparto de zonas.
 - El número es correlativo por año: «2026-0001».
+
+## Adenda — 2026-11-25
+
+La solicitud gana dos datos de lista cerrada, el tipo de intervención y la
+declaración de que hay autorización, y un cuarto estado
+([ADR-0009](ADR-0009-la-solicitud-dice-el-tipo-y-si-hay-autorizacion.md)).
+Ninguno identifica a nadie, así que la decisión sigue en pie. El documento de
+autorización sigue fuera: lo guarda el centro.

@@ -96,11 +96,13 @@
 .pse-state-pending { background: var(--pse-wait-cont); color: var(--pse-wait); }
 .pse-state-in_progress { background: var(--pse-brand-cont); color: var(--pse-brand); }
 .pse-state-attended { background: var(--pse-ok-cont); color: var(--pse-ok); }
+.pse-state-withdrawn { background: var(--pse-sup-2); color: var(--pse-text-2); }
 
 /* Listados */
 .pse-table { background: #fff; font-size: 14px; margin: 0; }
 .pse-table th { font-size: 12.5px; color: var(--pse-text-2); font-weight: 600; white-space: nowrap; }
 .pse-table td, .pse-table th { padding: 12px 10px; vertical-align: middle; }
+.pse-table td:first-child { white-space: nowrap; }
 .pse-status-form { display: flex; gap: 6px; align-items: center; }
 .pse-status-form .form-select { width: auto; }
 .pse-list-foot { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 18px; }
